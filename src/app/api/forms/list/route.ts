@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
+import type { FormSchema } from '@/lib/supabase/types';
 
 // GET /api/forms/list
 // Returns all non-archived forms with submission count per form.
@@ -13,18 +14,19 @@ export async function GET(req: NextRequest) {
   const db = createServerClient();
 
   // Fetch all non-archived forms
-  const { data: forms, error: formsError } = await db
+  const { data: rawForms, error: formsError } = await db
     .from('form_schemas')
-    .select('id, title, description, created_by, active_from, active_until, is_archived, created_at')
+    .select('*')
     .eq('is_archived', false)
     .order('created_at', { ascending: false });
+  const forms = (rawForms ?? []) as FormSchema[];
 
   if (formsError) {
     console.error('[list forms]', formsError);
     return NextResponse.json({ error: 'Failed to fetch forms' }, { status: 500 });
   }
 
-  if (!forms || forms.length === 0) {
+  if (forms.length === 0) {
     return NextResponse.json({ forms: [] });
   }
 
@@ -43,7 +45,7 @@ export async function GET(req: NextRequest) {
 
   // Tally counts per form_id
   const countMap: Record<string, number> = {};
-  for (const row of counts ?? []) {
+  for (const row of (counts ?? []) as Array<{ form_id: string }>) {
     countMap[row.form_id] = (countMap[row.form_id] ?? 0) + 1;
   }
 

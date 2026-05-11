@@ -5,6 +5,8 @@ import ExportCsvButton from '@/components/ExportCsvButton';
 import type { FormSchema, FormSubmission } from '@/lib/supabase/types';
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
 interface Props {
   params: Promise<{ form_id: string }>;
 }
@@ -24,12 +26,13 @@ export default async function SubmissionsPage({ params }: Props) {
   if (formError || !rawForm) notFound();
   const form = rawForm as FormSchema;
 
-  // Load submissions
-  const { data: submissions, error: subError } = await db
+  // Load submissions — select('*') avoids the same Supabase jsonb→never narrowing issue.
+  const { data: rawSubmissions, error: subError } = await db
     .from('form_submissions')
-    .select('id, form_id, submitted_by, data, submitted_at, metadata')
+    .select('*')
     .eq('form_id', form_id)
     .order('submitted_at', { ascending: false });
+  const submissions = (rawSubmissions ?? []) as FormSubmission[];
 
   // Derive column headers from schema field labels (ordered)
   const fields = [...(form.schema ?? [])].sort(
@@ -105,7 +108,7 @@ export default async function SubmissionsPage({ params }: Props) {
           {submissions?.length ?? 0} response{(submissions?.length ?? 0) !== 1 ? 's' : ''}
         </div>
         <ExportCsvButton
-          submissions={(submissions ?? []) as FormSubmission[]}
+          submissions={submissions}
           formTitle={form.title}
         />
       </div>

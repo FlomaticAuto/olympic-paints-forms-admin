@@ -40,12 +40,12 @@ export async function POST(req: NextRequest) {
     .insert({
       title:        title.trim(),
       description:  description ?? null,
-      schema:       schema as never,
+      schema:       schema,
       active_from:  active_from ?? new Date().toISOString(),
       active_until: active_until ?? null,
       created_by:   created_by ?? null,
       is_archived:  false,
-    })
+    } as never)
     .select('id')
     .single();
 
@@ -54,8 +54,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to create form' }, { status: 500 });
   }
 
+  const created = data as { id: string };
   const baseUrl = process.env.NEXT_PUBLIC_GITHUB_PAGES_BASE_URL ?? '';
-  const publicUrl = `${baseUrl}?id=${data.id}`;
+  const publicUrl = `${baseUrl}?id=${created.id}`;
 
-  return NextResponse.json({ form_id: data.id, public_url: publicUrl }, { status: 201 });
+  return NextResponse.json({ form_id: created.id, public_url: publicUrl }, { status: 201 });
 }

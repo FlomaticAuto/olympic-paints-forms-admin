@@ -4,25 +4,29 @@ import ArchiveButton from '@/components/ArchiveButton';
 import CopyLinkButton from '@/components/CopyLinkButton';
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
 // Server Component — fetches directly with service_role client.
 // No API round-trip needed; middleware already guards this route.
 export default async function AdminFormsPage() {
   const db = createServerClient();
 
-  const { data: forms, error } = await db
+  // select('*') avoids Supabase's jsonb→never generic narrowing on column-list selects.
+  const { data: rawForms, error } = await db
     .from('form_schemas')
-    .select('id, title, description, created_by, active_from, active_until, created_at')
+    .select('*')
     .eq('is_archived', false)
     .order('created_at', { ascending: false });
+  const forms = (rawForms ?? []) as import('@/lib/supabase/types').FormSchema[];
 
   // Submission counts — one query, tallied in JS
-  const formIds = (forms ?? []).map(f => f.id);
+  const formIds = forms.map(f => f.id);
   const { data: countRows } = formIds.length
     ? await db.from('form_submissions').select('form_id').in('form_id', formIds)
     : { data: [] };
 
   const countMap: Record<string, number> = {};
-  for (const row of countRows ?? []) {
+  for (const row of (countRows ?? []) as Array<{ form_id: string }>) {
     countMap[row.form_id] = (countMap[row.form_id] ?? 0) + 1;
   }
 

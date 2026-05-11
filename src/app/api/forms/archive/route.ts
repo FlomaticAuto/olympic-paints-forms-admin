@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
 
   const { error } = await db
     .from('form_schemas')
-    .update({ is_archived: true })
+    .update({ is_archived: true } as never)
     .eq('id', form_id);
 
   if (error) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
+import type { FormSchema, FormSubmission } from '@/lib/supabase/types';
 
 // GET /api/forms/[form_id]/submissions
 // Returns all submissions for the given form, newest first.
@@ -22,11 +23,12 @@ export async function GET(
   const db = createServerClient();
 
   // Verify the form exists (archived or not — admins can still read submissions)
-  const { data: form, error: formError } = await db
+  const { data: rawForm, error: formError } = await db
     .from('form_schemas')
-    .select('id, title')
+    .select('*')
     .eq('id', form_id)
     .maybeSingle();
+  const form = rawForm as FormSchema | null;
 
   if (formError) {
     console.error('[submissions — form lookup]', formError);
@@ -37,11 +39,12 @@ export async function GET(
     return NextResponse.json({ error: 'Form not found' }, { status: 404 });
   }
 
-  const { data: submissions, error: subError } = await db
+  const { data: rawSubs, error: subError } = await db
     .from('form_submissions')
-    .select('id, form_id, submitted_by, data, submitted_at, metadata')
+    .select('*')
     .eq('form_id', form_id)
     .order('submitted_at', { ascending: false });
+  const submissions = (rawSubs ?? []) as FormSubmission[];
 
   if (subError) {
     console.error('[submissions — fetch]', subError);
@@ -50,7 +53,7 @@ export async function GET(
 
   return NextResponse.json({
     form_id,
-    form_title: form.title,
-    submissions: submissions ?? [],
+    form_title: form!.title,
+    submissions,
   });
 }
