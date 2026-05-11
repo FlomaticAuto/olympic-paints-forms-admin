@@ -2,7 +2,7 @@ import { createServerClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import AdminShell from '@/components/AdminShell';
 import ExportCsvButton from '@/components/ExportCsvButton';
-import type { FormSubmission } from '@/lib/supabase/types';
+import type { FormSchema, FormSubmission } from '@/lib/supabase/types';
 import Link from 'next/link';
 
 interface Props {
@@ -13,14 +13,16 @@ export default async function SubmissionsPage({ params }: Props) {
   const { form_id } = await params;
   const db = createServerClient();
 
-  // Load form metadata
-  const { data: form, error: formError } = await db
+  // Load form metadata — select('*') ensures TypeScript uses the full Row type,
+  // avoiding a Supabase generic narrowing bug that collapses jsonb columns to never.
+  const { data: rawForm, error: formError } = await db
     .from('form_schemas')
-    .select('id, title, description, schema, active_from, active_until, created_by, created_at')
+    .select('*')
     .eq('id', form_id)
     .maybeSingle();
 
-  if (formError || !form) notFound();
+  if (formError || !rawForm) notFound();
+  const form = rawForm as FormSchema;
 
   // Load submissions
   const { data: submissions, error: subError } = await db
