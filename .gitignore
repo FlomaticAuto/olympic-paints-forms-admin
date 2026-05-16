@@ -4,6 +4,7 @@ node_modules/
 # Next.js build output
 .next/
 out/
+next-env.d.ts
 
 # Environment files — NEVER commit these
 .env
@@ -15,3 +16,5 @@ out/
 # Misc
 .DS_Store
 *.log
+
+.vercel
