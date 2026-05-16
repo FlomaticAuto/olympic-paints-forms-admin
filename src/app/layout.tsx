@@ -1,9 +1,23 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import '@/styles/globals.css';
 
 export const metadata: Metadata = {
   title: 'Olympic Paints — Forms Admin',
   description: 'Internal form management dashboard',
+  applicationName: 'OP Forms',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'OP Forms',
+  },
+  formatDetection: { telephone: false },
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: '#1A3D6E',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

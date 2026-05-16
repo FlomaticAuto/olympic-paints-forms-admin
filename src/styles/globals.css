@@ -328,3 +328,46 @@ a:hover { color: var(--color-brand-hover); text-decoration: underline; }
   text-transform: uppercase;
   color: var(--color-text-secondary);
 }
+
+/* ── MOBILE APP-SHELL (≤768px) ──────────────────────────────────────────── */
+@media (max-width: 768px) {
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Sticky compact topbar with safe-area-top */
+  .admin-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 90;
+    padding: 0 14px;
+    padding-top: env(safe-area-inset-top);
+    height: calc(52px + env(safe-area-inset-top));
+    gap: 10px;
+    box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,.4));
+  }
+  .admin-topbar-logo { width: 28px; height: 28px; }
+  .admin-topbar-logo img { width: 28px; height: 28px; }
+  .admin-topbar-title { font-size: 13px; letter-spacing: 0.03em; }
+  .admin-topbar-badge { font-size: 9px; padding: 2px 6px; }
+
+  .admin-main {
+    padding: 18px 12px calc(28px + env(safe-area-inset-bottom));
+    max-width: none;
+  }
+
+  .page-heading { margin-bottom: 18px; }
+
+  /* Inputs and buttons — minimum 44px tap, 16px font to avoid iOS zoom-on-focus */
+  input, select, textarea, button, .btn {
+    font-size: 16px;
+    min-height: 44px;
+  }
+  button.compact, .btn-icon { min-height: 36px; }
+
+  /* Tables shrink */
+  table { font-size: 13px; }
+  th, td { padding: 8px 10px; }
+}
