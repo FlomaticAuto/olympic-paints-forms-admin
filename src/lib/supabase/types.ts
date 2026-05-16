@@ -10,7 +10,9 @@ export type FieldType =
   | 'select'
   | 'radio'
   | 'checkbox'
-  | 'date';
+  | 'date'
+  | 'html'        // static content rendered between inputs (section headers, intro text)
+  | 'hidden';     // carries URL prefill into submission.data without rendering
 
 export interface FormField {
   id:          string;
@@ -19,6 +21,8 @@ export interface FormField {
   placeholder?: string;
   required?:   boolean;
   options?:    string[];   // for select / radio / checkbox
+  default?:    string;     // pre-selected value (select/radio) or pre-filled text
+  html?:       string;     // rendered when type === 'html' (sanitized in FormRenderer)
   order:       number;
 }
 
