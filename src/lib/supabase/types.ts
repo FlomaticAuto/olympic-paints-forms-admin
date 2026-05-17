@@ -47,6 +47,14 @@ export interface FormSubmission {
   metadata:     Record<string, unknown> | null;
 }
 
+export interface FormRespondent {
+  id:           string;
+  form_id:      string;
+  email:        string;
+  submitted_at: string | null;
+  created_at:   string;
+}
+
 // Minimal Database type for the Supabase generic client.
 // Extend if you add more tables.
 export interface Database {
@@ -61,6 +69,11 @@ export interface Database {
         Row:    FormSubmission;
         Insert: Omit<FormSubmission, 'id' | 'submitted_at'> & { id?: string; submitted_at?: string };
         Update: never;
+      };
+      form_respondents: {
+        Row:    FormRespondent;
+        Insert: Omit<FormRespondent, 'id' | 'created_at'> & { id?: string; created_at?: string };
+        Update: Pick<FormRespondent, 'submitted_at'>;
       };
     };
     Functions: {
