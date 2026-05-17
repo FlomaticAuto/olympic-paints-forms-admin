@@ -97,5 +97,23 @@ export async function POST(
   }
 
   const ins = rawIns as { id: string; submitted_at: string };
+
+  // Mark respondent as submitted in form_respondents (if email is present in metadata).
+  const respondentEmail = typeof metadata.respondent_email === 'string'
+    ? metadata.respondent_email.toLowerCase().trim()
+    : null;
+
+  if (respondentEmail) {
+    const { error: rErr } = await db
+      .from('form_respondents')
+      .update({ submitted_at: ins.submitted_at } as never)
+      .eq('form_id', form_id)
+      .eq('email', respondentEmail);
+    if (rErr) {
+      console.error('[submit — respondent upsert]', rErr);
+      // Non-fatal: submission was saved; log and continue.
+    }
+  }
+
   return NextResponse.json({ submission_id: ins.id, submitted_at: ins.submitted_at }, { status: 201, headers: corsHeaders(origin) });
 }
