@@ -1,14 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
+import { corsHeaders } from '@/lib/cors';
 import type { FormSchema } from '@/lib/supabase/types';
+
+// OPTIONS /api/forms/list — CORS preflight for GitHub Pages board
+export async function OPTIONS(req: NextRequest) {
+  const origin = req.headers.get('origin');
+  return new NextResponse(null, { status: 204, headers: corsHeaders(origin) });
+}
 
 // GET /api/forms/list
 // Returns all non-archived forms with submission count per form.
 // Auth: x-admin-secret header
 export async function GET(req: NextRequest) {
+  const origin = req.headers.get('origin');
+
   const secret = req.headers.get('x-admin-secret');
   if (!secret || secret !== process.env.FORM_ADMIN_SECRET) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders(origin) });
   }
 
   const db = createServerClient();
@@ -23,11 +32,11 @@ export async function GET(req: NextRequest) {
 
   if (formsError) {
     console.error('[list forms]', formsError);
-    return NextResponse.json({ error: 'Failed to fetch forms' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch forms' }, { status: 500, headers: corsHeaders(origin) });
   }
 
   if (forms.length === 0) {
-    return NextResponse.json({ forms: [] });
+    return NextResponse.json({ forms: [] }, { headers: corsHeaders(origin) });
   }
 
   // Fetch submission counts for all returned form IDs in one query
@@ -54,8 +63,8 @@ export async function GET(req: NextRequest) {
   const result = forms.map(f => ({
     ...f,
     submission_count: countMap[f.id] ?? 0,
-    public_url: `${baseUrl}?id=${f.id}`,
+    public_url: `${baseUrl}/f/?id=${f.id}`,
   }));
 
-  return NextResponse.json({ forms: result });
+  return NextResponse.json({ forms: result }, { headers: corsHeaders(origin) });
 }
