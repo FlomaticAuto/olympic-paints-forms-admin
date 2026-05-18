@@ -25,6 +25,7 @@ export interface FormField {
   options?:    string[];   // for select / radio / checkbox
   default?:    string;     // pre-selected value (select/radio) or pre-filled text
   html?:       string;     // rendered when type === 'html' (sanitized in FormRenderer)
+  drive?:      boolean;    // when true and NEXT_PUBLIC_GOOGLE_CLIENT_ID is set, use Drive Picker instead of native file input
   order:       number;
 }
 
