@@ -3,6 +3,7 @@ import { useState, FormEvent } from 'react';
 import DOMPurify from 'isomorphic-dompurify';
 import { createClient } from '@supabase/supabase-js';
 import type { FormField } from '@/lib/supabase/types';
+import DrivePickerField from '@/components/DrivePickerField';
 
 const SUPABASE_URL  = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -23,7 +24,7 @@ export default function FormRenderer({ formId, title, description, schema, prefi
     if (f.type === 'hidden') {
       initial[f.id] = prefill[f.id] ?? f.default ?? '';
     } else if (f.type === 'file') {
-      initial[f.id] = [];   // array of File objects
+      initial[f.id] = f.drive ? '' : [];   // drive fields: string URL; native: File[]
     } else if (f.type === 'checkbox_grid' || f.type === 'checkbox') {
       // default may be a comma-separated string of pre-ticked values
       const raw = f.default ?? '';
@@ -52,8 +53,21 @@ export default function FormRenderer({ formId, title, description, schema, prefi
     }
     const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
 
+    // Validate required drive fields — hidden inputs skip browser constraint validation
+    for (const f of schema) {
+      if (f.type === 'file' && f.drive && f.required) {
+        const url = values[f.id] as string;
+        if (!url) {
+          setError(`Please upload photos for: ${f.label}`);
+          setBusy(false);
+          return;
+        }
+      }
+    }
+
     for (const f of schema) {
       if (f.type !== 'file') continue;
+      if (f.drive) continue;  // drive fields already have a URL string — no Supabase upload needed
       const files = values[f.id] as File[];
       if (!files || files.length === 0) continue;
 
@@ -135,8 +149,12 @@ export default function FormRenderer({ formId, title, description, schema, prefi
             const otherTicked = Array.isArray(parentVal) && (parentVal as string[]).includes('Other');
             if (!otherTicked) return null;
           }
+          const enrichedField = f.drive && f.type === 'file'
+            ? { ...f, _repName: String(values['servicing_rep'] ?? ''), _storeName: String(values['store_name'] ?? ''), _visitDate: String(values['checked_in_at'] ?? '') }
+            : f;
+
           return (
-            <Field key={f.id} field={f} value={values[f.id]} onChange={(v) => setValues((prev) => ({ ...prev, [f.id]: v }))} />
+            <Field key={f.id} field={enrichedField} value={values[f.id]} onChange={(v) => setValues((prev) => ({ ...prev, [f.id]: v }))} />
           );
         })}
         {uploadProgress && <p className="upload-progress">{uploadProgress}</p>}
@@ -243,6 +261,23 @@ function Field({ field, value, onChange }: { field: FormField; value: unknown; o
   }
 
   if (field.type === 'file') {
+    const DRIVE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? '';
+    if (field.drive && DRIVE_CLIENT_ID) {
+      return (
+        <DrivePickerField
+          fieldId={field.id}
+          label={field.label}
+          required={field.required ?? false}
+          repName={(field as any)._repName ?? ''}
+          storeName={(field as any)._storeName ?? ''}
+          visitDate={(field as any)._visitDate ?? ''}
+          value={value as string}
+          onChange={onChange}
+        />
+      );
+    }
+
+    // Native file input fallback (no Drive configured, or field.drive not set)
     const files = (value as File[] | undefined) ?? [];
     return (
       <div className="field">
