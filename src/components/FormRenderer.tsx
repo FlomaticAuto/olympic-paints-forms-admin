@@ -127,9 +127,18 @@ export default function FormRenderer({ formId, title, description, schema, prefi
       <form onSubmit={onSubmit} className="card">
         <h1>{title}</h1>
         {description && <p className="desc">{description}</p>}
-        {ordered.map((f) => (
-          <Field key={f.id} field={f} value={values[f.id]} onChange={(v) => setValues((prev) => ({ ...prev, [f.id]: v }))} />
-        ))}
+        {ordered.map((f) => {
+          // Hide _other text fields unless sibling checkbox_grid has "Other" ticked
+          if (f.id.endsWith('_other')) {
+            const parentId = f.id.slice(0, -6); // strip "_other"
+            const parentVal = values[parentId];
+            const otherTicked = Array.isArray(parentVal) && (parentVal as string[]).includes('Other');
+            if (!otherTicked) return null;
+          }
+          return (
+            <Field key={f.id} field={f} value={values[f.id]} onChange={(v) => setValues((prev) => ({ ...prev, [f.id]: v }))} />
+          );
+        })}
         {uploadProgress && <p className="upload-progress">{uploadProgress}</p>}
         {error && <p className="error">{error}</p>}
         <button type="submit" disabled={busy} className="submit">
