@@ -2,7 +2,7 @@
 import { useState, FormEvent } from 'react';
 import DOMPurify from 'isomorphic-dompurify';
 import { createClient } from '@supabase/supabase-js';
-import type { FormField } from '@/lib/supabase/types';
+import type { FormField, EnrichedDriveField } from '@/lib/supabase/types';
 import DrivePickerField from '@/components/DrivePickerField';
 
 const SUPABASE_URL  = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -46,24 +46,22 @@ export default function FormRenderer({ formId, title, description, schema, prefi
     setBusy(true);
     setError(null);
 
+    // Validate required drive fields — hidden inputs skip browser constraint validation
+    const missingDriveFields = schema.filter(
+      (f) => f.type === 'file' && f.drive && f.required && !(values[f.id] as string),
+    );
+    if (missingDriveFields.length > 0) {
+      setError(`Please upload photos for: ${missingDriveFields.map((f) => f.label).join(', ')}`);
+      setBusy(false);
+      return;
+    }
+
     // Serialise checkbox_grid arrays → comma-separated strings for consistent storage
     const resolvedValues: Record<string, unknown> = {};
     for (const [k, val] of Object.entries(values)) {
       resolvedValues[k] = Array.isArray(val) ? (val as string[]).join(', ') : val;
     }
     const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
-
-    // Validate required drive fields — hidden inputs skip browser constraint validation
-    for (const f of schema) {
-      if (f.type === 'file' && f.drive && f.required) {
-        const url = values[f.id] as string;
-        if (!url) {
-          setError(`Please upload photos for: ${f.label}`);
-          setBusy(false);
-          return;
-        }
-      }
-    }
 
     for (const f of schema) {
       if (f.type !== 'file') continue;
@@ -168,7 +166,7 @@ export default function FormRenderer({ formId, title, description, schema, prefi
   );
 }
 
-function Field({ field, value, onChange }: { field: FormField; value: unknown; onChange: (v: unknown) => void }) {
+function Field({ field, value, onChange }: { field: EnrichedDriveField | FormField; value: unknown; onChange: (v: unknown) => void }) {
   if (field.type === 'html') {
     return <div className="html-block" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(field.html ?? '') }} />;
   }
@@ -262,15 +260,16 @@ function Field({ field, value, onChange }: { field: FormField; value: unknown; o
 
   if (field.type === 'file') {
     const DRIVE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? '';
-    if (field.drive && DRIVE_CLIENT_ID) {
+    const enriched = '_repName' in field ? (field as EnrichedDriveField) : null;
+    if (field.drive && DRIVE_CLIENT_ID && enriched) {
       return (
         <DrivePickerField
           fieldId={field.id}
           label={field.label}
           required={field.required ?? false}
-          repName={(field as any)._repName ?? ''}
-          storeName={(field as any)._storeName ?? ''}
-          visitDate={(field as any)._visitDate ?? ''}
+          repName={enriched._repName}
+          storeName={enriched._storeName}
+          visitDate={enriched._visitDate}
           value={value as string}
           onChange={onChange}
         />

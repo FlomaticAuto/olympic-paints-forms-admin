@@ -29,6 +29,14 @@ export interface FormField {
   order:       number;
 }
 
+// Runtime-only: FormRenderer enriches drive file fields with sibling values for folder naming.
+// Not stored in Supabase — only used during form rendering.
+export interface EnrichedDriveField extends FormField {
+  _repName:   string;
+  _storeName: string;
+  _visitDate: string;
+}
+
 export interface FormSchema {
   id:           string;
   title:        string;
