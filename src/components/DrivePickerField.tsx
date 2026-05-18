@@ -25,7 +25,7 @@ interface Props {
   onChange:  (folderUrl: string) => void;
 }
 
-type UploadStatus = 'idle' | 'loading-api' | 'auth' | 'creating-folder' | 'uploading' | 'done' | 'error';
+type UploadStatus = 'idle' | 'auth' | 'creating-folder' | 'uploading' | 'done' | 'error';
 
 function normaliseName(s: string): string {
   return s.trim().replace(/\//g, '-').replace(/\s+/g, ' ');
@@ -74,34 +74,44 @@ export default function DrivePickerField({
   const [uploadCount, setUploadCount] = useState(0);
   const [errorMsg, setErrorMsg]       = useState('');
   const pickerInited                  = useRef(false);
+  const apisFailedRef                 = useRef(false);
 
   useEffect(() => {
     if (pickerInited.current) return;
     pickerInited.current = true;
 
     const loadGapi = () =>
-      new Promise<void>((resolve) => {
+      new Promise<void>((resolve, reject) => {
         const s = document.createElement('script');
         s.src = 'https://apis.google.com/js/api.js';
         s.onload = () => window.gapi.load('picker', resolve);
+        s.onerror = () => reject(new Error('Failed to load Google API script'));
         document.head.appendChild(s);
       });
 
     const loadGis = () =>
-      new Promise<void>((resolve) => {
+      new Promise<void>((resolve, reject) => {
         const s = document.createElement('script');
         s.src = 'https://accounts.google.com/gsi/client';
         s.onload = () => resolve();
+        s.onerror = () => reject(new Error('Failed to load Google Identity script'));
         document.head.appendChild(s);
       });
 
-    Promise.all([loadGapi(), loadGis()]).catch(() => {});
+    Promise.all([loadGapi(), loadGis()]).catch(() => {
+      apisFailedRef.current = true;
+    });
   }, []);
 
   const missingContext = !repName.trim() || !storeName.trim();
 
   async function handleUpload() {
     if (missingContext) return;
+    if (apisFailedRef.current) {
+      setStatus('error');
+      setErrorMsg('Google API scripts failed to load. Check your network connection.');
+      return;
+    }
     if (!CLIENT_ID || !API_KEY || !ROOT_FOLDER) {
       setStatus('error');
       setErrorMsg('Google Drive is not configured. Contact Quintus.');
@@ -110,6 +120,7 @@ export default function DrivePickerField({
 
     setStatus('auth');
     setErrorMsg('');
+    setUploadCount(0);
 
     const tokenClient = window.google.accounts.oauth2.initTokenClient({
       client_id: CLIENT_ID,
@@ -157,13 +168,17 @@ export default function DrivePickerField({
           for (const doc of files) {
             const fileId    = doc[window.google.picker.Document.ID];
             const parentId  = doc[window.google.picker.Document.PARENT_ID] || '';
-            await fetch(
+            const moveRes = await fetch(
               `https://www.googleapis.com/drive/v3/files/${fileId}?addParents=${dateFolderId}&removeParents=${parentId}&fields=id`,
               {
                 method: 'PATCH',
                 headers: { Authorization: `Bearer ${accessToken}` },
               },
             );
+            if (!moveRes.ok) {
+              const moveErr = await moveRes.json().catch(() => ({}));
+              throw new Error(`Failed to move file: ${JSON.stringify(moveErr)}`);
+            }
             uploaded++;
             setUploadCount(uploaded);
           }
