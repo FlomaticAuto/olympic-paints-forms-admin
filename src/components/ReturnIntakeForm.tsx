@@ -29,6 +29,8 @@ export default function ReturnIntakeForm({ formId }: Props) {
   const [size,       setSize]       = useState('');
   const [qty,        setQty]        = useState('');
   const [supervisor, setSupervisor] = useState('');
+  const [returnType, setReturnType] = useState('');
+  const [batchNo,    setBatchNo]    = useState('');
   const [notes,      setNotes]      = useState('');
   const [busy,       setBusy]       = useState(false);
   const [done,       setDone]       = useState(false);
@@ -68,6 +70,8 @@ export default function ReturnIntakeForm({ formId }: Props) {
       colour,
       size,
       qty,
+      return_type: returnType,
+      batch_no:    batchNo,
       supervisor,
       notes,
     };
@@ -227,6 +231,36 @@ export default function ReturnIntakeForm({ formId }: Props) {
             />
           </label>
         )}
+
+        <div className="ri-divider" />
+
+        {/* Return details */}
+        <div className="ri-step-label">Return Details</div>
+        <label className="ri-field">
+          <span className="ri-label">Return Type *</span>
+          <select
+            value={returnType}
+            onChange={(e) => setReturnType(e.target.value)}
+            required
+          >
+            <option value="">— select return type —</option>
+            <option value="Rework">Rework</option>
+            <option value="Inventory">Inventory</option>
+            <option value="Inv+Rework">Inv+Rework</option>
+            <option value="Written Off">Written Off</option>
+          </select>
+        </label>
+
+        <label className="ri-field">
+          <span className="ri-label">Batch Number *</span>
+          <input
+            type="text"
+            value={batchNo}
+            onChange={(e) => setBatchNo(e.target.value)}
+            placeholder="e.g. BT-2026-001"
+            required
+          />
+        </label>
 
         <div className="ri-divider" />
 
