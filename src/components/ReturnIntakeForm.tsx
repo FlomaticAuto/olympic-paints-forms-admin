@@ -115,7 +115,7 @@ export default function ReturnIntakeForm({ formId }: Props) {
           <p className="ri-ref">{reportRef}</p>
           <p className="ri-sub">Your return has been recorded. The supervisor has been notified.</p>
         </div>
-        <style jsx>{css}</style>
+        <style dangerouslySetInnerHTML={{ __html: css }} />
       </main>
     );
   }
@@ -296,7 +296,7 @@ export default function ReturnIntakeForm({ formId }: Props) {
           {busy ? 'Submitting…' : 'Log Return'}
         </button>
       </form>
-      <style jsx>{css}</style>
+      <style dangerouslySetInnerHTML={{ __html: css }} />
     </main>
   );
 }
