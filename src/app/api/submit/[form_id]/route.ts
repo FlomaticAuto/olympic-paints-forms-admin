@@ -34,9 +34,6 @@ export async function POST(
   if (!data || typeof data !== 'object') {
     return NextResponse.json({ error: '`data` object required' }, { status: 400, headers: corsHeaders(origin) });
   }
-  if (!repCode) {
-    return NextResponse.json({ error: '`metadata.rep_code` required' }, { status: 400, headers: corsHeaders(origin) });
-  }
 
   const db = createServerClient();
 
@@ -61,20 +58,24 @@ export async function POST(
     return NextResponse.json({ error: 'Form not yet active' }, { status: 403, headers: corsHeaders(origin) });
   }
 
-  const { data: rawExisting, error: existsError } = await db
-    .from('form_submissions')
-    .select('id')
-    .eq('form_id', form_id)
-    .filter('metadata->>rep_code', 'eq', repCode)
-    .limit(1);
-  const existing = (rawExisting ?? []) as { id: string }[];
+  // Duplicate lockout only applies when a rep_code is present (single-submit forms).
+  // Forms without a rep_code (e.g. recurring operational forms) allow multiple submissions.
+  if (repCode) {
+    const { data: rawExisting, error: existsError } = await db
+      .from('form_submissions')
+      .select('id')
+      .eq('form_id', form_id)
+      .filter('metadata->>rep_code', 'eq', repCode)
+      .limit(1);
+    const existing = (rawExisting ?? []) as { id: string }[];
 
-  if (existsError) {
-    console.error('[submit — lockout check]', existsError);
-    return NextResponse.json({ error: 'Submission check failed' }, { status: 500, headers: corsHeaders(origin) });
-  }
-  if (existing.length > 0) {
-    return NextResponse.json({ error: 'Already submitted', code: 'DUPLICATE' }, { status: 409, headers: corsHeaders(origin) });
+    if (existsError) {
+      console.error('[submit — lockout check]', existsError);
+      return NextResponse.json({ error: 'Submission check failed' }, { status: 500, headers: corsHeaders(origin) });
+    }
+    if (existing.length > 0) {
+      return NextResponse.json({ error: 'Already submitted', code: 'DUPLICATE' }, { status: 409, headers: corsHeaders(origin) });
+    }
   }
 
   const submittedBy = typeof metadata.rep_email === 'string' ? metadata.rep_email : null;
