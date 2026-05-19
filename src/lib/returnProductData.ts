@@ -203,8 +203,9 @@ export const PRODUCT_DATA: Record<string, ProductInfo> = {
 };
 
 export const SUPERVISORS = [
+  'Piyush',
+  'Mukesh',
+  'Ravi',
   'Jagdish',
-  'Masingita',
-  'Sipho',
-  'Other',
+  'Masangita',
 ];
