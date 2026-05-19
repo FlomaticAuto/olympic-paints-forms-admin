@@ -122,7 +122,7 @@ export default function ReturnIntakeForm({ formId }: Props) {
         {/* Header */}
         <div className="ri-header">
           <div className="ri-logo-wrap">
-            <img src="/logo.jpg" alt="Olympic Paints" width={40} height={40} />
+            <img src="https://flomaticauto.github.io/olympic-paints-clocking/logo.jpg" alt="Olympic Paints" width={40} height={40} />
           </div>
           <div>
             <div className="ri-eyebrow">Olympic Paints</div>
