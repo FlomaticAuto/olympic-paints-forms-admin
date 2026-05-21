@@ -168,6 +168,26 @@ export default function ReturnIntakeForm({ formId }: Props) {
               <span className="ri-meta-val">{date}</span>
             </div>
           </div>
+          <div className="ri-theme-toggle" role="group" aria-label="Display theme">
+            <button
+              type="button"
+              className={`ri-theme-btn ${theme === 'theme-dark' ? 'is-active' : ''}`}
+              aria-pressed={theme === 'theme-dark'}
+              onClick={() => setTheme('theme-dark')}
+            >Dark</button>
+            <button
+              type="button"
+              className={`ri-theme-btn ${theme === 'theme-light' ? 'is-active' : ''}`}
+              aria-pressed={theme === 'theme-light'}
+              onClick={() => setTheme('theme-light')}
+            >Light</button>
+            <button
+              type="button"
+              className={`ri-theme-btn ${theme === 'theme-max' ? 'is-active' : ''}`}
+              aria-pressed={theme === 'theme-max'}
+              onClick={() => setTheme('theme-max')}
+            >Max</button>
+          </div>
         </header>
 
         <div className="ri-panes">
@@ -885,5 +905,45 @@ const css = `
   .ri-wrap.theme-light .ri-step-value.is-empty,
   .ri-wrap.theme-max .ri-step-value.is-empty {
     color: var(--r-text-dim);
+  }
+
+  /* ── Theme toggle ── */
+  .ri-theme-toggle {
+    display: flex;
+    gap: 4px;
+    margin-left: 14px;
+    background: var(--r-pane-sunken);
+    border-radius: 8px;
+    padding: 3px;
+  }
+  .ri-theme-btn {
+    background: transparent;
+    color: var(--r-text);
+    border: 0;
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    min-height: 36px;
+    transition: background 0.12s;
+  }
+  .ri-theme-btn:hover { background: var(--r-pane); }
+  .ri-theme-btn:focus-visible {
+    outline: 3px solid var(--r-focus);
+    outline-offset: 2px;
+  }
+  .ri-theme-btn.is-active {
+    background: var(--r-selected-bg);
+    color: var(--r-selected-fg);
+    font-weight: 900;
+  }
+  .ri-wrap.theme-light .ri-theme-btn,
+  .ri-wrap.theme-max .ri-theme-btn {
+    font-size: 14px;
+    min-height: 44px;
   }
 `;
