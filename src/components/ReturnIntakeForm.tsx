@@ -839,63 +839,66 @@ const css = `
     .ri-meta { width: 100%; margin-left: 0; justify-content: flex-start; }
   }
 
-  /* ── Accessible-theme type & sizing bumps (Light + Max only) ── */
+  /* ── Accessible-theme type & sizing bumps (Light + Max only) ──
+     Tuned to fit a 10-inch tablet landscape (1024px) without horizontal
+     scroll. Keeps AAA contrast + 2px borders; trims type bumps so the
+     3-pane grid still fits. */
   .ri-wrap.theme-light,
   .ri-wrap.theme-max {
-    font-size: 18px;
+    font-size: 15px;
   }
   .ri-wrap.theme-light .ri-btn,
   .ri-wrap.theme-max .ri-btn {
-    font-size: 16px;
-    min-height: 52px;
+    font-size: 13px;
+    min-height: 46px;
     border-width: 2px;
   }
   .ri-wrap.theme-light .ri-btn-wide,
   .ri-wrap.theme-max .ri-btn-wide {
-    font-size: 18px;
+    font-size: 14px;
   }
   .ri-wrap.theme-light .ri-swatch,
   .ri-wrap.theme-max .ri-swatch {
-    font-size: 14px;
-    min-height: 58px;
+    font-size: 12px;
+    min-height: 52px;
   }
   .ri-wrap.theme-light .ri-step-value,
   .ri-wrap.theme-max .ri-step-value {
-    font-size: 32px;
-    min-height: 52px;
+    font-size: 24px;
+    min-height: 46px;
   }
   .ri-wrap.theme-light .ri-step-btn,
   .ri-wrap.theme-max .ri-step-btn {
-    font-size: 28px;
+    font-size: 24px;
   }
   .ri-wrap.theme-light h1,
   .ri-wrap.theme-max h1 {
-    font-size: 28px;
+    font-size: 24px;
   }
   .ri-wrap.theme-light .ri-step-label,
   .ri-wrap.theme-max .ri-step-label {
-    font-size: 13px;
+    font-size: 12px;
     color: var(--r-text);
   }
   .ri-wrap.theme-light .ri-eyebrow,
   .ri-wrap.theme-max .ri-eyebrow {
-    font-size: 12px;
+    font-size: 11px;
     color: var(--r-text-muted);
   }
   .ri-wrap.theme-light .ri-meta-label,
   .ri-wrap.theme-max .ri-meta-label {
-    font-size: 11px;
+    font-size: 10px;
     color: var(--r-text-muted);
   }
   .ri-wrap.theme-light .ri-meta-val,
   .ri-wrap.theme-max .ri-meta-val {
-    font-size: 20px;
+    font-size: 17px;
     color: var(--r-text);
   }
   .ri-wrap.theme-light .ri-input,
   .ri-wrap.theme-max .ri-input {
-    font-size: 18px;
-    min-height: 52px;
+    font-size: 15px;
+    min-height: 46px;
     border-width: 2px;
   }
   .ri-wrap.theme-light .ri-step-value,
