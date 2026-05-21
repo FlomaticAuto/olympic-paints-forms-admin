@@ -10,7 +10,7 @@
 
 **Spec reference:** `docs/superpowers/specs/2026-05-21-returns-intake-tablet-landscape-design.md`
 
-**Testing note:** This repo has no test framework installed. Verification per task is: (a) `npm run lint` passes, (b) `npm run build` passes, (c) where a pure helper exists, a one-shot Node script verifies the behaviour, (d) `npm run dev` + manual browser check on the new page. Final task includes a manual checklist verified on the actual tablet before sign-off.
+**Testing note:** This repo has no test framework and no ESLint config installed. Verification per task is: (a) `npx tsc --noEmit -p tsconfig.json` passes, (b) `npm run build` passes, (c) where a pure helper exists, a one-shot Node script verifies the behaviour, (d) `npm run dev` + manual browser check on the new page. **Do NOT bootstrap ESLint** — `next lint` will fail without config and that is acceptable for this work; skip any lint step that surfaces during implementation. Final task includes a manual checklist verified on the actual tablet before sign-off.
 
 ---
 
