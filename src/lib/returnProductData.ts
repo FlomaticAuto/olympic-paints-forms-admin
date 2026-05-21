@@ -20,7 +20,7 @@ const ROOF_SIZES          = ['5L', '20L'];
 const VARNISH_SIZES       = ['1L', '5L'];
 const PRIMER_SIZES        = ['5L', '20L'];
 const SMALL_SIZES         = ['500ml', '1L', '5L'];
-const OXIDE_POWDER_SIZES  = ['500g x 24', '5kg'];
+const OXIDE_POWDER_SIZES  = ['500g', '500g x 24', '5kg'];
 const STAINER_SIZES       = ['50ml', '100ml', 'Box of 12 × 50ml', 'Box of 12 × 100ml'];
 
 export const CATEGORIES: CategoryEntry[] = [
