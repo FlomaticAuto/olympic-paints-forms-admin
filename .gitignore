@@ -20,3 +20,6 @@ next-env.d.ts
 .vercel
 
 .env*.local
+
+# Superpowers brainstorming mockups (local-only)
+.superpowers/
