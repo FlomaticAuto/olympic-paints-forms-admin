@@ -906,6 +906,19 @@ const css = `
   .ri-wrap.theme-max .ri-step-value.is-empty {
     color: var(--r-text-dim);
   }
+  .ri-wrap.theme-light h1,
+  .ri-wrap.theme-max h1 {
+    color: var(--r-text);
+  }
+  .ri-wrap.theme-light .ri-submit,
+  .ri-wrap.theme-max .ri-submit {
+    background: var(--r-selected-bg);
+    color: var(--r-selected-fg);
+  }
+  .ri-wrap.theme-light .ri-ref,
+  .ri-wrap.theme-max .ri-ref {
+    color: var(--r-text);
+  }
 
   /* ── Theme toggle ── */
   .ri-theme-toggle {
