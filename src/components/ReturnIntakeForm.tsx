@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, useRef, FormEvent } from 'react';
 import { CATEGORIES, PRODUCT_DATA, SUPERVISORS } from '@/lib/returnProductData';
 import { COLOUR_HEX, getColourHex } from '@/lib/returnColourHex';
 import { pickContrastColour, needsSwatchBorder, requiredFieldsFilled } from '@/lib/uiHelpers';
@@ -24,15 +24,18 @@ function todayLocal(): string {
 export default function ReturnIntakeForm({ formId }: Props) {
   const [reportRef]  = useState<string>(() => generateRef());
   const [theme, setTheme] = useState<Theme>('theme-dark');
+  const hasReadSavedTheme = useRef(false);
 
   useEffect(() => {
     const saved = window.localStorage.getItem(THEME_STORAGE_KEY);
     if (saved === 'theme-light' || saved === 'theme-max' || saved === 'theme-dark') {
       setTheme(saved);
     }
+    hasReadSavedTheme.current = true;
   }, []);
 
   useEffect(() => {
+    if (!hasReadSavedTheme.current) return;
     window.localStorage.setItem(THEME_STORAGE_KEY, theme);
   }, [theme]);
 
