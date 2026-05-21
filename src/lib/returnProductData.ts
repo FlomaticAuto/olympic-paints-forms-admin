@@ -66,6 +66,7 @@ export const CATEGORIES: CategoryEntry[] = [
     products: [
       'Universal Undercoat',
       'Water Based Plaster Primer',
+      'All-In-One Primer',
       'Zinc Phosphate Primer',
     ],
   },
@@ -209,6 +210,10 @@ export const PRODUCT_DATA: Record<string, ProductInfo> = {
     sizes: PRIMER_SIZES,
   },
   'Water Based Plaster Primer': {
+    colours: ['White'],
+    sizes: PRIMER_SIZES,
+  },
+  'All-In-One Primer': {
     colours: ['White'],
     sizes: PRIMER_SIZES,
   },
