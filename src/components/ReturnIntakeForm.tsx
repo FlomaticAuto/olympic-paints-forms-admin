@@ -583,13 +583,13 @@ const css = `
   }
   .ri-btn:hover { background: var(--r-pane); }
   .ri-btn:focus-visible {
-    outline: 2px solid var(--r-yellow);
-    outline-offset: 2px;
+    outline: 3px solid var(--r-focus);
+    outline-offset: 3px;
   }
   .ri-btn.is-active {
-    background: var(--r-yellow);
-    color: var(--r-page);
-    border-color: var(--r-yellow);
+    background: var(--r-selected-bg);
+    color: var(--r-selected-fg);
+    border-color: var(--r-selected-bd);
     font-weight: 900;
   }
   .ri-btn-wide {
@@ -664,12 +664,12 @@ const css = `
   }
   .ri-swatch:hover { transform: scale(1.03); }
   .ri-swatch:focus-visible {
-    outline: 2px solid var(--r-yellow);
-    outline-offset: 2px;
+    outline: 3px solid var(--r-focus);
+    outline-offset: 3px;
   }
   .ri-swatch.is-selected {
-    border-color: var(--r-yellow);
-    box-shadow: 0 0 0 2px var(--r-pane), 0 0 0 4px var(--r-yellow);
+    border-color: var(--r-selected-bd);
+    box-shadow: 0 0 0 2px var(--r-pane), 0 0 0 4px var(--r-selected-bd);
   }
 
   /* ── Pill row ── */
@@ -726,9 +726,9 @@ const css = `
   }
   textarea.ri-input { min-height: 80px; resize: vertical; }
   .ri-input:focus {
-    outline: 2px solid var(--r-yellow);
-    outline-offset: 2px;
-    border-color: var(--r-yellow);
+    outline: 3px solid var(--r-focus);
+    outline-offset: 3px;
+    border-color: var(--r-focus);
   }
 
   /* ── Notes toggle ── */
