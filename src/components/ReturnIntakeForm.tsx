@@ -393,7 +393,8 @@ function SupervisorGrid({ value, onChange }: { value: string; onChange: (v: stri
 
 // ── Styles ────────────────────────────────────────────────────────────────
 const css = `
-  :root {
+  :root,
+  .ri-wrap.theme-dark {
     --r-page: #0D2040;
     --r-pane: #1A3D6E;
     --r-pane-sunken: #071022;
@@ -407,6 +408,10 @@ const css = `
     --r-danger-bg: rgba(232,96,96,0.14);
     --r-danger-fg: #FDDCDC;
     --r-danger-bd: rgba(232,96,96,0.35);
+    --r-focus: var(--r-yellow);
+    --r-selected-bg: var(--r-yellow);
+    --r-selected-fg: var(--r-page);
+    --r-selected-bd: var(--r-yellow);
   }
 
   .ri-wrap {
