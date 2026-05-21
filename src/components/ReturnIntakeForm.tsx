@@ -30,7 +30,14 @@ function todayLocal(): string {
 
 export default function ReturnIntakeForm({ formId }: Props) {
   const [reportRef]  = useState<string>(() => generateRef());
-  const [theme, setTheme] = useState<Theme>(() => readInitialTheme());
+  const [theme, setTheme] = useState<Theme>('theme-dark');
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem(THEME_STORAGE_KEY);
+    if (saved === 'theme-light' || saved === 'theme-max' || saved === 'theme-dark') {
+      setTheme(saved);
+    }
+  }, []);
 
   useEffect(() => {
     window.localStorage.setItem(THEME_STORAGE_KEY, theme);
