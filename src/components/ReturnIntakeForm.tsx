@@ -9,13 +9,6 @@ interface Props { formId: string; }
 type Theme = 'theme-dark' | 'theme-light' | 'theme-max';
 const THEME_STORAGE_KEY = 'returns-intake-theme';
 
-function readInitialTheme(): Theme {
-  if (typeof window === 'undefined') return 'theme-dark';
-  const saved = window.localStorage.getItem(THEME_STORAGE_KEY);
-  if (saved === 'theme-light' || saved === 'theme-max' || saved === 'theme-dark') return saved;
-  return 'theme-dark';
-}
-
 function generateRef(): string {
   const now = new Date();
   const yymmdd = now.toISOString().slice(2, 10).replace(/-/g, '');
