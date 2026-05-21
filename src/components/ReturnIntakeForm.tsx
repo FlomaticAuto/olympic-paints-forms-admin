@@ -434,6 +434,26 @@ const css = `
     --r-selected-bd: #6A5000;
   }
 
+  .ri-wrap.theme-max {
+    --r-page: #F5C400;
+    --r-pane: #FFFFFF;
+    --r-pane-sunken: #FAE04D;
+    --r-yellow: #F5C400;
+    --r-yellow-hover: #FAE04D;
+    --r-text: #000000;
+    --r-text-muted: #2E2E2C;
+    --r-text-dim: #5C5B58;
+    --r-border: #000000;
+    --r-border-soft: #5C5B58;
+    --r-danger-bg: #FFFFFF;
+    --r-danger-fg: #B00020;
+    --r-danger-bd: #B00020;
+    --r-focus: #0046B8;
+    --r-selected-bg: #000000;
+    --r-selected-fg: #F5C400;
+    --r-selected-bd: #000000;
+  }
+
   .ri-wrap {
     background: var(--r-page);
     min-height: 100vh;
