@@ -115,6 +115,7 @@ export const COLOUR_HEX: Record<string, string> = {
   'Wild Iris': '#7E6BA0',
   'Touch of Venus': '#C49AA8',
   'Jaipur': '#9D4A6B',
+  'Violet': '#8F00FF',
 
   // Aluminium
   'Aluminium': '#A8A9AD',

@@ -14,13 +14,14 @@ export interface CategoryEntry {
 }
 
 // Sizes available per product type
-const ENAMEL_SIZES   = ['500ml', '1L', '5L', '20L'];
-const PVA_SIZES      = ['5L', '20L'];
-const ROOF_SIZES     = ['5L', '20L'];
-const VARNISH_SIZES  = ['1L', '5L'];
-const PRIMER_SIZES   = ['5L', '20L'];
-const SMALL_SIZES    = ['500ml', '1L', '5L'];
-const OXIDE_TBD      = ['TBD']; // placeholder until Quintus supplies sizes
+const ENAMEL_SIZES        = ['500ml', '1L', '5L', '20L'];
+const PVA_SIZES           = ['5L', '20L'];
+const ROOF_SIZES          = ['5L', '20L'];
+const VARNISH_SIZES       = ['1L', '5L'];
+const PRIMER_SIZES        = ['5L', '20L'];
+const SMALL_SIZES         = ['500ml', '1L', '5L'];
+const OXIDE_POWDER_SIZES  = ['500g x 24', '5kg'];
+const STAINER_SIZES       = ['50ml', '100ml', 'Box of 12 × 50ml', 'Box of 12 × 100ml'];
 
 export const CATEGORIES: CategoryEntry[] = [
   {
@@ -43,7 +44,7 @@ export const CATEGORIES: CategoryEntry[] = [
       'Hi-Hiding Super Acrylic Contractors PVA',
       'Eclipse PVA',
       'Liberty PVA',
-      '7-IN-1 Multipurpose Plus',
+      '7-IN-1',
     ],
   },
   {
@@ -74,11 +75,12 @@ export const CATEGORIES: CategoryEntry[] = [
       'Stainers',
       'Red Oxide Powder',
       'Black Oxide Powder',
-      'Other Oxide Powder',
+      'Green Oxide Powder',
+      'Blue Oxide Powder',
+      'Yellow Oxide Powder',
+      'Brown Oxide Powder',
       'Distemper',
       'Water Based Red Oxide Primer',
-      'Oxide Primer #2',
-      'Oxide Primer #3',
     ],
   },
   {
@@ -87,7 +89,7 @@ export const CATEGORIES: CategoryEntry[] = [
       'Universal Acrylic Roof & Paving Paint',
       'Alkyd Roof Paint',
       'Stoep Paint',
-      '3-IN-1 Roof Paint',
+      '3-IN-1',
     ],
   },
   {
@@ -164,7 +166,7 @@ export const PRODUCT_DATA: Record<string, ProductInfo> = {
     colours: ['White', 'Cream'],
     sizes: PVA_SIZES,
   },
-  '7-IN-1 Multipurpose Plus': {
+  '7-IN-1': {
     colours: ['Sand Storm', 'Rim Rock', 'Stone Grey', 'Night Sky', 'Mushroom', 'Silver Mist', 'Pebble Stone', 'Espresso Grey'],
     sizes: PVA_SIZES,
   },
@@ -215,15 +217,16 @@ export const PRODUCT_DATA: Record<string, ProductInfo> = {
     sizes: SMALL_SIZES,
   },
 
-  // ── Oxide (TBD — sizes/colours from Quintus) ──
-  'Stainers':                       { colours: ['N/A'], sizes: OXIDE_TBD },
-  'Red Oxide Powder':               { colours: ['N/A'], sizes: OXIDE_TBD },
-  'Black Oxide Powder':             { colours: ['N/A'], sizes: OXIDE_TBD },
-  'Other Oxide Powder':             { colours: ['N/A'], sizes: OXIDE_TBD },
-  'Distemper':                      { colours: ['N/A'], sizes: OXIDE_TBD },
-  'Water Based Red Oxide Primer':   { colours: ['Red'], sizes: PRIMER_SIZES },
-  'Oxide Primer #2':                { colours: ['N/A'], sizes: OXIDE_TBD },
-  'Oxide Primer #3':                { colours: ['N/A'], sizes: OXIDE_TBD },
+  // ── Oxide ──
+  'Stainers':                       { colours: ['Violet'], sizes: STAINER_SIZES },
+  'Red Oxide Powder':               { colours: ['N/A'],    sizes: OXIDE_POWDER_SIZES },
+  'Black Oxide Powder':             { colours: ['N/A'],    sizes: OXIDE_POWDER_SIZES },
+  'Green Oxide Powder':             { colours: ['N/A'],    sizes: OXIDE_POWDER_SIZES },
+  'Blue Oxide Powder':              { colours: ['N/A'],    sizes: OXIDE_POWDER_SIZES },
+  'Yellow Oxide Powder':            { colours: ['N/A'],    sizes: OXIDE_POWDER_SIZES },
+  'Brown Oxide Powder':             { colours: ['N/A'],    sizes: OXIDE_POWDER_SIZES },
+  'Distemper':                      { colours: ['White', 'Cream', 'Blue', 'Yellow', 'Pink', 'Green'], sizes: ['2kg'] },
+  'Water Based Red Oxide Primer':   { colours: ['Red'],    sizes: PRIMER_SIZES },
 
   // ── Roof ──
   'Universal Acrylic Roof & Paving Paint': {
@@ -238,7 +241,7 @@ export const PRODUCT_DATA: Record<string, ProductInfo> = {
     colours: ['Red', 'Brown', 'Grey', 'Green', 'Burgundy', 'Aluminium', 'Black'],
     sizes: ROOF_SIZES,
   },
-  '3-IN-1 Roof Paint': {
+  '3-IN-1': {
     colours: ['Black', 'Burgundy', 'Grey', 'Brown', 'Terracotta', 'Red', 'Green', 'Charcoal', 'Albany'],
     sizes: ROOF_SIZES,
   },
@@ -264,7 +267,7 @@ export const PRODUCT_DATA: Record<string, ProductInfo> = {
   },
 
   // ── Accessories ──
-  'Putty':                    { colours: ['N/A'], sizes: ['500g', '1kg', '2kg', '5kg', 'Other'] },
+  'Putty':                    { colours: ['N/A'], sizes: ['500g', '1kg', '2kg', '5kg', '10kg', '20kg', '40kg', 'Other'] },
   'Thinners':                 { colours: ['N/A'], sizes: ['1L', '2.5L', '5L', '20L', 'Other'] },
   'Carborundum / Sandpaper':  { colours: ['N/A'], sizes: ['60 grit', '80 grit', '120 grit', '180 grit', '240 grit', 'Other'] },
   'Turpentine':               { colours: ['N/A'], sizes: ['1L', '2.5L', '5L', '20L', 'Other'] },
