@@ -133,7 +133,7 @@ export default function ReturnIntakeForm({ formId }: Props) {
 
   if (done) {
     return (
-      <main className="ri-wrap">
+      <main className={`ri-wrap ${theme}`}>
         <div className="ri-thanks">
           <div className="ri-check">✓</div>
           <h1>Return Logged</h1>
@@ -146,7 +146,7 @@ export default function ReturnIntakeForm({ formId }: Props) {
   }
 
   return (
-    <main className="ri-wrap">
+    <main className={`ri-wrap ${theme}`}>
       <form onSubmit={onSubmit} className="ri-frame">
 
         {/* Header */}
