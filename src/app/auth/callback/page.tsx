@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react';
 import * as msal from '@azure/msal-browser';
 
 const CLIENT_ID = process.env.NEXT_PUBLIC_MSAL_CLIENT_ID ?? '';
-const AUTHORITY = 'https://login.microsoftonline.com/common';
+const AUTHORITY = 'https://login.microsoftonline.com/consumers';
 
 export default function AuthCallback() {
   const [message, setMessage] = useState('Completing sign-in…');
