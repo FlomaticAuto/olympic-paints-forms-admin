@@ -4,7 +4,7 @@ import * as msal from '@azure/msal-browser';
 
 const CLIENT_ID  = process.env.NEXT_PUBLIC_MSAL_CLIENT_ID ?? '';
 const GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
-const AUTHORITY  = 'https://login.microsoftonline.com/consumers';
+const AUTHORITY  = 'https://login.microsoftonline.com/common';
 const SCOPES     = ['Files.ReadWrite'];
 
 const ROOT_FOLDER_NAME = 'Olympic Paints — Merchandising Visits';
