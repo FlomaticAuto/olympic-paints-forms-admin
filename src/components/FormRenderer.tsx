@@ -310,6 +310,7 @@ function Field({ field, value, onChange }: { field: EnrichedDriveField | FormFie
     field.type === 'tel'            ? 'tel'            :
     field.type === 'number'         ? 'number'         :
     field.type === 'date'           ? 'date'           :
+    field.type === 'time'           ? 'time'           :
     field.type === 'datetime-local' ? 'datetime-local' :
     'text';
 
