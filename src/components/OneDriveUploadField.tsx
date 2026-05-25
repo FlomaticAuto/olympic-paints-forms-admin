@@ -4,12 +4,13 @@ import * as msal from '@azure/msal-browser';
 
 const CLIENT_ID  = process.env.NEXT_PUBLIC_MSAL_CLIENT_ID ?? '';
 const GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
-// Personal Microsoft accounts use 'consumers' as the authority tenant
-const AUTHORITY  = `https://login.microsoftonline.com/consumers`;
+const AUTHORITY  = 'https://login.microsoftonline.com/consumers';
 const SCOPES     = ['Files.ReadWrite'];
 
-// Root folder name in OneDrive — created automatically if it doesn't exist
 const ROOT_FOLDER_NAME = 'Olympic Paints — Merchandising Visits';
+
+// sessionStorage key used to persist pending-upload context across the redirect
+const PENDING_KEY = 'od_pending_upload';
 
 declare global {
   interface Window { _msalInstance?: msal.PublicClientApplication }
@@ -36,43 +37,19 @@ function dateOnly(iso: string): string {
   return iso.split('T')[0] || new Date().toISOString().split('T')[0];
 }
 
-/** Get or initialise the MSAL singleton */
+/** Singleton MSAL instance — redirectUri must match Azure App Registration exactly */
 function getMsalInstance(): msal.PublicClientApplication {
   if (!window._msalInstance) {
     window._msalInstance = new msal.PublicClientApplication({
       auth: {
-        clientId:   CLIENT_ID,
-        authority:  AUTHORITY,
-        redirectUri: window.location.origin,
+        clientId:    CLIENT_ID,
+        authority:   AUTHORITY,
+        redirectUri: window.location.origin + '/auth/callback',
       },
-      cache: { cacheLocation: 'sessionStorage' },
+      cache: { cacheLocation: 'sessionStorage', storeAuthStateInCookie: false },
     });
   }
   return window._msalInstance;
-}
-
-/**
- * Acquire an access token silently, falling back to a popup if needed.
- * Returns null if the user cancels or an error occurs.
- */
-async function acquireToken(): Promise<string | null> {
-  const instance = getMsalInstance();
-  await instance.initialize();
-
-  const accounts = instance.getAllAccounts();
-  const request  = { scopes: SCOPES, account: accounts[0] };
-
-  try {
-    const result = await instance.acquireTokenSilent(request);
-    return result.accessToken;
-  } catch {
-    try {
-      const result = await instance.acquireTokenPopup({ scopes: SCOPES });
-      return result.accessToken;
-    } catch {
-      return null;
-    }
-  }
 }
 
 /** Graph API helper — throws on non-2xx */
@@ -91,90 +68,58 @@ async function graphRequest(
     },
     body: body instanceof Blob || body instanceof ArrayBuffer
       ? (body as BodyInit)
-      : body
-        ? JSON.stringify(body)
-        : undefined,
+      : body ? JSON.stringify(body) : undefined,
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(`Graph ${method} ${path} → ${res.status}: ${JSON.stringify(err)}`);
   }
-  // 204 No Content has no body
   if (res.status === 204) return null;
   return res.json();
 }
 
-/**
- * Ensure a folder exists at the given path under /me/drive/root.
- * Creates each segment if missing. Returns the driveItem id of the leaf folder.
- *
- * Path example: "Olympic Paints — Merchandising Visits/Bhadresh/Kit Kat/2026-05-25"
- */
 async function ensureFolderPath(token: string, segments: string[]): Promise<string> {
   let parentId = 'root';
-
   for (const name of segments) {
-    // Check if child folder already exists
-    const encoded = encodeURIComponent(name);
     let folderId: string | null = null;
-
     try {
       const children = await graphRequest(
         'GET',
-        `/me/drive/items/${parentId}/children?$filter=name eq '${encoded}' and folder ne null&$select=id,name`,
+        `/me/drive/items/${parentId}/children?$filter=name eq '${encodeURIComponent(name)}' and folder ne null&$select=id,name`,
         token,
       );
       const match = (children.value ?? []).find(
         (item: any) => item.name.toLowerCase() === name.toLowerCase(),
       );
       if (match) folderId = match.id;
-    } catch {
-      // If filtering fails (some Graph versions), fall through to create
-    }
+    } catch { /* fall through to create */ }
 
     if (!folderId) {
       const created = await graphRequest(
         'POST',
         `/me/drive/items/${parentId}/children`,
         token,
-        {
-          name,
-          folder: {},
-          '@microsoft.graph.conflictBehavior': 'rename',
-        },
+        { name, folder: {}, '@microsoft.graph.conflictBehavior': 'rename' },
         'application/json',
       );
       folderId = created.id;
     }
-
     parentId = folderId!;
   }
-
   return parentId;
 }
 
-/**
- * Upload a File to a OneDrive folder (simple upload, max ~4 MB per file).
- * For larger files an upload session would be needed, but visit photos are
- * typically under 4 MB each.
- */
 async function uploadFile(token: string, folderId: string, file: File): Promise<void> {
-  const encodedName = encodeURIComponent(file.name);
   await graphRequest(
     'PUT',
-    `/me/drive/items/${folderId}:/${encodedName}:/content`,
+    `/me/drive/items/${folderId}:/${encodeURIComponent(file.name)}:/content`,
     token,
     await file.arrayBuffer(),
     file.type || 'application/octet-stream',
   );
 }
 
-/**
- * Create a read-only sharing link for a folder and return the webUrl.
- * Falls back to the driveItem webUrl if sharing link creation fails.
- */
 async function getFolderUrl(token: string, folderId: string): Promise<string> {
-  // First get the direct webUrl from the folder item
   try {
     const item = await graphRequest('GET', `/me/drive/items/${folderId}?$select=webUrl`, token);
     return item.webUrl as string;
@@ -192,19 +137,69 @@ export default function OneDriveUploadField({
   const [uploadCount, setUploadCount] = useState(0);
   const [totalFiles, setTotalFiles]   = useState(0);
   const [errorMsg, setErrorMsg]       = useState('');
+  const [needsSignIn, setNeedsSignIn] = useState(false);
   const fileInputRef                  = useRef<HTMLInputElement>(null);
-  const msalReadyRef                  = useRef(false);
-
-  // Pre-initialise MSAL on mount so the first upload tap is fast
-  useEffect(() => {
-    if (msalReadyRef.current || !CLIENT_ID) return;
-    msalReadyRef.current = true;
-    try {
-      getMsalInstance().initialize().catch(() => {/* ignore pre-init errors */});
-    } catch {/* ignore */}
-  }, []);
+  const initDoneRef                   = useRef(false);
 
   const missingContext = !repName.trim() || !storeName.trim();
+
+  /**
+   * On mount:
+   * 1. Initialise MSAL and handle any pending redirect response.
+   * 2. If a token is already cached, clear the sign-in prompt.
+   * 3. If we came back from a redirect AND files were stored, trigger the upload.
+   */
+  useEffect(() => {
+    if (initDoneRef.current || !CLIENT_ID) return;
+    initDoneRef.current = true;
+
+    (async () => {
+      try {
+        const instance = getMsalInstance();
+        await instance.initialize();
+
+        // Handle the redirect response — this resolves the auth code exchange
+        await instance.handleRedirectPromise();
+
+        const accounts = instance.getAllAccounts();
+        if (accounts.length > 0) {
+          setNeedsSignIn(false);
+        } else {
+          setNeedsSignIn(true);
+        }
+      } catch {
+        setNeedsSignIn(true);
+      }
+    })();
+  }, []);
+
+  /** Get a valid access token — silent only (no popup, no redirect here) */
+  async function getToken(): Promise<string | null> {
+    const instance = getMsalInstance();
+    await instance.initialize();
+    const accounts = instance.getAllAccounts();
+    if (accounts.length === 0) return null;
+    try {
+      const result = await instance.acquireTokenSilent({ scopes: SCOPES, account: accounts[0] });
+      return result.accessToken;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Redirect the page to Microsoft login, then come back here */
+  async function signIn() {
+    try {
+      // Save the current page URL so /auth/callback can return here
+      sessionStorage.setItem('od_return_url', window.location.href);
+      const instance = getMsalInstance();
+      await instance.initialize();
+      await instance.loginRedirect({ scopes: SCOPES });
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Sign-in failed.');
+      setStatus('error');
+    }
+  }
 
   function handleButtonClick() {
     if (missingContext || !CLIENT_ID) return;
@@ -214,25 +209,23 @@ export default function OneDriveUploadField({
   async function handleFilesSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
     if (files.length === 0) return;
+    e.target.value = '';
 
     setStatus('auth');
     setErrorMsg('');
     setUploadCount(0);
     setTotalFiles(files.length);
 
-    // Reset input so same files can be re-selected after an error
-    e.target.value = '';
+    const token = await getToken();
+    if (!token) {
+      setStatus('error');
+      setErrorMsg('Not signed in. Tap "Sign in to Microsoft" first.');
+      setNeedsSignIn(true);
+      return;
+    }
 
     try {
-      const token = await acquireToken();
-      if (!token) {
-        setStatus('error');
-        setErrorMsg('Sign-in cancelled or failed. Tap to try again.');
-        return;
-      }
-
       setStatus('creating-folder');
-
       const rep   = normaliseName(repName);
       const store = normaliseName(storeName);
       const date  = dateOnly(visitDate || new Date().toISOString());
@@ -274,7 +267,7 @@ export default function OneDriveUploadField({
         <p className="od-hint">Fill in Store Name and Servicing Rep first</p>
       )}
 
-      {/* Hidden native file input — triggered programmatically */}
+      {/* Hidden native file input */}
       <input
         ref={fileInputRef}
         type="file"
@@ -284,7 +277,15 @@ export default function OneDriveUploadField({
         onChange={handleFilesSelected}
       />
 
-      {!missingContext && status !== 'done' && (
+      {/* Step 1 — not signed in yet: show Sign In button */}
+      {!missingContext && needsSignIn && status !== 'done' && (
+        <button type="button" className="od-btn od-signin" onClick={signIn}>
+          🔑 Sign in to Microsoft to enable photo upload
+        </button>
+      )}
+
+      {/* Step 2 — signed in: show Upload button */}
+      {!missingContext && !needsSignIn && status !== 'done' && (
         <button
           type="button"
           className="od-btn"
@@ -292,7 +293,7 @@ export default function OneDriveUploadField({
           disabled={status !== 'idle' && status !== 'error'}
         >
           {status === 'idle'            && '📤 Upload to OneDrive'}
-          {status === 'auth'            && 'Signing in to Microsoft…'}
+          {status === 'auth'            && 'Checking sign-in…'}
           {status === 'creating-folder' && 'Setting up folder…'}
           {status === 'uploading'       && `Uploading… (${uploadCount} / ${totalFiles})`}
           {status === 'error'           && '⚠ Retry upload'}
@@ -325,6 +326,9 @@ export default function OneDriveUploadField({
         }
         .od-btn:hover:not(:disabled) { border-color: #F5C400; color: #F5C400; }
         .od-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .od-signin {
+          background: #1A3D6E; border-style: solid; border-color: rgba(107,158,208,0.6);
+        }
         .od-done {
           display: flex; align-items: center; gap: 14px;
           padding: 16px 18px; background: rgba(45,140,122,0.12);
