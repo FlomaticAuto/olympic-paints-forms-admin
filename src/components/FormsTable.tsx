@@ -101,6 +101,27 @@ function FormRow({
           >
             👁 Preview
           </button>
+          <a
+            href={`/f/${form.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              background: 'var(--color-surface-elevated)',
+              border: '1px solid var(--color-border-default)',
+              borderRadius: 'var(--r-sm)',
+              color: 'var(--color-text-secondary)',
+              fontSize: 12,
+              padding: '4px 10px',
+              cursor: 'pointer',
+              fontFamily: 'var(--font-body)',
+              whiteSpace: 'nowrap',
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+            }}
+          >
+            🔗 Open
+          </a>
           <CopyLinkButton formId={form.id} />
           <ArchiveButton formId={form.id} />
         </div>
