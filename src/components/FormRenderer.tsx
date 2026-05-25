@@ -306,10 +306,11 @@ function Field({ field, value, onChange }: { field: EnrichedDriveField | FormFie
   }
 
   const htmlInputType =
-    field.type === 'email' ? 'email' :
-    field.type === 'tel'   ? 'tel'   :
-    field.type === 'number' ? 'number' :
-    field.type === 'date'  ? 'date'  :
+    field.type === 'email'          ? 'email'          :
+    field.type === 'tel'            ? 'tel'            :
+    field.type === 'number'         ? 'number'         :
+    field.type === 'date'           ? 'date'           :
+    field.type === 'datetime-local' ? 'datetime-local' :
     'text';
 
   return (
@@ -327,36 +328,209 @@ function Field({ field, value, onChange }: { field: EnrichedDriveField | FormFie
 }
 
 const styles = `
-  .oly-public { background:#0D2040; color:#fff; font-family:'Barlow',sans-serif; min-height:100vh; padding:24px 16px 64px; }
-  .card { max-width:680px; margin:0 auto; background:#1A3D6E; border-radius:12px; padding:24px; box-shadow:0 10px 30px rgba(0,0,0,0.5); }
-  h1 { font-family:'Barlow Condensed',sans-serif; font-weight:900; color:#F5C400; text-transform:uppercase; font-size:28px; margin:0 0 8px; }
-  .desc { color:#B8CCE8; margin:0 0 24px; line-height:1.4; }
-  .field { display:block; margin:16px 0; }
-  .label { display:block; font-family:'Barlow Condensed',sans-serif; font-weight:700; color:#F5C400; text-transform:uppercase; letter-spacing:0.08em; font-size:11px; margin-bottom:6px; }
-  input, select, textarea { width:100%; box-sizing:border-box; padding:12px 14px; min-height:44px; font-size:16px; font-family:'Barlow',sans-serif; background:#0D2040; color:#fff; border:1px solid rgba(107,158,208,0.35); border-radius:8px; }
-  input:focus, select:focus, textarea:focus { outline:2px solid #F5C400; outline-offset:2px; }
-  textarea { min-height:80px; resize:vertical; }
-  .html-block { padding:12px 14px; background:rgba(245,196,0,0.08); border-left:4px solid #F5C400; border-radius:8px; margin:16px 0; line-height:1.4; }
-  .html-block strong { color:#F5C400; }
-  .radio-row { display:flex; align-items:center; gap:10px; padding:10px 0; min-height:44px; cursor:pointer; }
-  .radio-row input { width:auto; min-height:auto; }
-  fieldset { border:0; padding:0; margin:16px 0; }
-  legend { padding:0; }
-  .cb-grid { display:grid; grid-template-columns:1fr 1fr; gap:4px 12px; margin-top:6px; }
-  .cb-row { display:flex; align-items:center; gap:10px; padding:10px 8px; min-height:44px; cursor:pointer; border-radius:6px; transition:background 0.1s; }
-  .cb-row:hover { background:rgba(245,196,0,0.08); }
-  .cb-row input[type=checkbox] { width:18px; height:18px; min-height:auto; flex-shrink:0; accent-color:#F5C400; cursor:pointer; }
-  .cb-row span { font-size:14px; line-height:1.3; }
-  @media (max-width:480px) { .cb-grid { grid-template-columns:1fr; } }
-  .submit { width:100%; padding:16px; min-height:52px; background:#F5C400; color:#0D2040; border:0; border-radius:8px; font-family:'Barlow Condensed',sans-serif; font-weight:900; text-transform:uppercase; letter-spacing:0.08em; font-size:16px; cursor:pointer; margin-top:24px; }
-  .submit:disabled { opacity:0.5; cursor:not-allowed; }
-  .error { color:#FDDCDC; background:rgba(232,96,96,0.14); border:1px solid rgba(232,96,96,0.35); padding:12px; border-radius:8px; margin-top:16px; }
-  .upload-progress { color:#FDF0A0; background:rgba(245,196,0,0.10); border:1px solid rgba(245,196,0,0.25); padding:12px; border-radius:8px; margin-top:16px; font-size:14px; }
-  .file-label { display:block; cursor:pointer; }
-  .file-input { position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
-  .file-btn { display:flex; align-items:center; justify-content:center; min-height:44px; padding:12px 14px; background:#0D2040; color:#B8CCE8; border:1px dashed rgba(107,158,208,0.5); border-radius:8px; font-size:15px; text-align:center; transition:border-color 0.15s; }
-  .file-label:hover .file-btn { border-color:#F5C400; color:#F5C400; }
-  .file-list { margin:8px 0 0; padding:0 0 0 16px; color:#B8CCE8; font-size:13px; }
-  .file-list li { margin:2px 0; }
-  @media (max-width:480px) { h1 { font-size:24px; } .card { padding:16px; } }
+  /* ── Base — optimised for 10-inch tablet, easy to read & tap ── */
+  @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;900&family=Barlow:wght@400;500&display=swap');
+
+  .oly-public {
+    background: #0D2040;
+    color: #fff;
+    font-family: 'Barlow', sans-serif;
+    min-height: 100vh;
+    padding: 24px 20px 80px;
+    font-size: 18px;
+  }
+
+  /* Card fills most of a 10-inch screen width */
+  .card {
+    max-width: 860px;
+    margin: 0 auto;
+    background: #1A3D6E;
+    border-radius: 14px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  }
+
+  h1 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    color: #F5C400;
+    text-transform: uppercase;
+    font-size: 36px;
+    margin: 0 0 8px;
+  }
+
+  .desc {
+    color: #B8CCE8;
+    margin: 0 0 28px;
+    line-height: 1.5;
+    font-size: 17px;
+  }
+
+  .field {
+    display: block;
+    margin: 22px 0;
+  }
+
+  /* Large, bold field labels — easy to scan */
+  .label {
+    display: block;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    color: #F5C400;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
+
+  /* Inputs — tall enough for easy tapping on tablet */
+  input, select, textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 16px 18px;
+    min-height: 56px;
+    font-size: 18px;
+    font-family: 'Barlow', sans-serif;
+    background: #0D2040;
+    color: #fff;
+    border: 1.5px solid rgba(107,158,208,0.4);
+    border-radius: 10px;
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: 2.5px solid #F5C400;
+    outline-offset: 2px;
+  }
+  /* Make select options readable */
+  select option { background: #0D2040; color: #fff; font-size: 18px; }
+
+  textarea { min-height: 96px; resize: vertical; }
+
+  /* Date picker — force large text on Android/iOS */
+  input[type=date] { min-height: 60px; font-size: 18px; color-scheme: dark; }
+
+  .html-block {
+    padding: 14px 18px;
+    background: rgba(245,196,0,0.08);
+    border-left: 4px solid #F5C400;
+    border-radius: 10px;
+    margin: 22px 0;
+    line-height: 1.5;
+    font-size: 17px;
+  }
+  .html-block strong { color: #F5C400; }
+
+  /* Radio rows — extra tall tap targets */
+  fieldset { border: 0; padding: 0; margin: 22px 0; }
+  legend { padding: 0; }
+
+  .radio-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    min-height: 56px;
+    cursor: pointer;
+    border-radius: 8px;
+    margin: 4px 0;
+    transition: background 0.1s;
+  }
+  .radio-row:hover { background: rgba(245,196,0,0.06); }
+  .radio-row input[type=radio] {
+    width: 22px;
+    height: 22px;
+    min-height: auto;
+    flex-shrink: 0;
+    accent-color: #F5C400;
+    cursor: pointer;
+  }
+  .radio-row span { font-size: 18px; }
+
+  /* Checkbox grid */
+  .cb-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; margin-top: 8px; }
+  .cb-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 10px;
+    min-height: 52px;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: background 0.1s;
+  }
+  .cb-row:hover { background: rgba(245,196,0,0.08); }
+  .cb-row input[type=checkbox] { width: 22px; height: 22px; min-height: auto; flex-shrink: 0; accent-color: #F5C400; cursor: pointer; }
+  .cb-row span { font-size: 17px; line-height: 1.3; }
+
+  /* Submit button — big, can't miss it */
+  .submit {
+    width: 100%;
+    padding: 20px;
+    min-height: 64px;
+    background: #F5C400;
+    color: #0D2040;
+    border: 0;
+    border-radius: 10px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 22px;
+    cursor: pointer;
+    margin-top: 32px;
+  }
+  .submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .error {
+    color: #FDDCDC;
+    background: rgba(232,96,96,0.14);
+    border: 1px solid rgba(232,96,96,0.35);
+    padding: 14px 18px;
+    border-radius: 10px;
+    margin-top: 20px;
+    font-size: 16px;
+  }
+  .upload-progress {
+    color: #FDF0A0;
+    background: rgba(245,196,0,0.10);
+    border: 1px solid rgba(245,196,0,0.25);
+    padding: 14px 18px;
+    border-radius: 10px;
+    margin-top: 20px;
+    font-size: 16px;
+  }
+
+  /* Native file fallback */
+  .file-label { display: block; cursor: pointer; }
+  .file-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  .file-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 56px;
+    padding: 16px 18px;
+    background: #0D2040;
+    color: #B8CCE8;
+    border: 1.5px dashed rgba(107,158,208,0.5);
+    border-radius: 10px;
+    font-size: 18px;
+    text-align: center;
+    transition: border-color 0.15s;
+  }
+  .file-label:hover .file-btn { border-color: #F5C400; color: #F5C400; }
+  .file-list { margin: 8px 0 0; padding: 0 0 0 16px; color: #B8CCE8; font-size: 15px; }
+  .file-list li { margin: 3px 0; }
+
+  /* Tablet: single-column, full width */
+  @media (max-width: 900px) {
+    .card { padding: 24px 20px; }
+    h1 { font-size: 30px; }
+  }
+  @media (max-width: 540px) {
+    .card { padding: 16px 14px; }
+    h1 { font-size: 26px; }
+    .cb-grid { grid-template-columns: 1fr; }
+    .oly-public { padding: 12px 8px 80px; font-size: 16px; }
+    input, select, textarea { font-size: 16px; }
+    .radio-row span { font-size: 16px; }
+  }
 `;

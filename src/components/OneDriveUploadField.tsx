@@ -317,24 +317,24 @@ export default function OneDriveUploadField({
       <style jsx>{`
         .od-btn {
           display: flex; align-items: center; justify-content: center;
-          width: 100%; min-height: 44px; padding: 12px 14px;
+          width: 100%; min-height: 56px; padding: 16px 18px;
           background: #0D2040; color: #B8CCE8;
-          border: 1px dashed rgba(107,158,208,0.5); border-radius: 8px;
-          font-size: 15px; font-family: Barlow, sans-serif; cursor: pointer;
+          border: 1.5px dashed rgba(107,158,208,0.5); border-radius: 10px;
+          font-size: 18px; font-family: Barlow, sans-serif; cursor: pointer;
           transition: border-color 0.15s, color 0.15s;
         }
         .od-btn:hover:not(:disabled) { border-color: #F5C400; color: #F5C400; }
         .od-btn:disabled { opacity: 0.6; cursor: not-allowed; }
         .od-done {
-          display: flex; align-items: center; gap: 12px;
-          padding: 12px 14px; background: rgba(45,140,122,0.12);
-          border: 1px solid rgba(45,140,122,0.30); border-radius: 8px;
-          color: #C8EDE7; font-size: 14px;
+          display: flex; align-items: center; gap: 14px;
+          padding: 16px 18px; background: rgba(45,140,122,0.12);
+          border: 1.5px solid rgba(45,140,122,0.30); border-radius: 10px;
+          color: #C8EDE7; font-size: 17px;
         }
-        .od-link { color: #F5C400; font-weight: 600; text-decoration: none; }
+        .od-link { color: #F5C400; font-weight: 600; font-size: 17px; text-decoration: none; }
         .od-link:hover { text-decoration: underline; }
-        .od-hint { color: #6B9ED0; font-size: 13px; margin: 4px 0 0; }
-        .od-error { color: #FDDCDC; font-size: 13px; margin: 6px 0 0; }
+        .od-hint { color: #6B9ED0; font-size: 15px; margin: 6px 0 0; }
+        .od-error { color: #FDDCDC; font-size: 15px; margin: 8px 0 0; }
       `}</style>
     </div>
   );
