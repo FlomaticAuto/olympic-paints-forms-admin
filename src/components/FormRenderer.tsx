@@ -3,7 +3,7 @@ import { useState, FormEvent } from 'react';
 import DOMPurify from 'isomorphic-dompurify';
 import { createClient } from '@supabase/supabase-js';
 import type { FormField, EnrichedDriveField } from '@/lib/supabase/types';
-import DrivePickerField from '@/components/DrivePickerField';
+import OneDriveUploadField from '@/components/OneDriveUploadField';
 
 const SUPABASE_URL  = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -259,11 +259,10 @@ function Field({ field, value, onChange }: { field: EnrichedDriveField | FormFie
   }
 
   if (field.type === 'file') {
-    const DRIVE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? '';
     const enriched = '_repName' in field ? (field as EnrichedDriveField) : null;
-    if (field.drive && DRIVE_CLIENT_ID && enriched) {
+    if (field.drive && enriched) {
       return (
-        <DrivePickerField
+        <OneDriveUploadField
           fieldId={field.id}
           label={field.label}
           required={field.required ?? false}

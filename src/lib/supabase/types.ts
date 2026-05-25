@@ -25,11 +25,11 @@ export interface FormField {
   options?:    string[];   // for select / radio / checkbox
   default?:    string;     // pre-selected value (select/radio) or pre-filled text
   html?:       string;     // rendered when type === 'html' (sanitized in FormRenderer)
-  drive?:      boolean;    // when true and NEXT_PUBLIC_GOOGLE_CLIENT_ID is set, use Drive Picker instead of native file input
+  drive?:      boolean;    // when true, use OneDriveUploadField (MSAL/Graph) instead of native file input
   order:       number;
 }
 
-// Runtime-only: FormRenderer enriches drive file fields with sibling values for folder naming.
+// Runtime-only: FormRenderer enriches OneDrive file fields with sibling values for folder naming.
 // Not stored in Supabase — only used during form rendering.
 export interface EnrichedDriveField extends FormField {
   _repName:   string;
