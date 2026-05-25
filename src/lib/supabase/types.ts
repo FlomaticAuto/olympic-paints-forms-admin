@@ -12,6 +12,7 @@ export type FieldType =
   | 'checkbox'
   | 'checkbox_grid'  // multi-select tick grid — options rendered in 2-col layout, default is comma-separated pre-ticked values
   | 'date'
+  | 'datetime-local'
   | 'file'        // image/document upload — stored in Supabase Storage, URL(s) saved in data
   | 'html'        // static content rendered between inputs (section headers, intro text)
   | 'hidden';     // carries URL prefill into submission.data without rendering

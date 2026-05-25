@@ -28,8 +28,6 @@ export default async function AdminFormsPage() {
     countMap[row.form_id] = (countMap[row.form_id] ?? 0) + 1;
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_GITHUB_PAGES_BASE_URL ?? '';
-
   return (
     <AdminShell>
       <div className="page-heading">
@@ -51,7 +49,7 @@ export default async function AdminFormsPage() {
         </div>
       )}
 
-      <FormsTable forms={forms} countMap={countMap} baseUrl={baseUrl} />
+      <FormsTable forms={forms} countMap={countMap} />
     </AdminShell>
   );
 }

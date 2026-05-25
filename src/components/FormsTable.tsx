@@ -9,7 +9,6 @@ import FormPreviewPanel from '@/components/FormPreviewPanel';
 interface Props {
   forms: FormSchema[];
   countMap: Record<string, number>;
-  baseUrl: string;
 }
 
 // ── Area classification ──────────────────────────────────────────────────────
@@ -55,12 +54,10 @@ function expiryBadge(activeUntil: string | null) {
 function FormRow({
   form,
   countMap,
-  baseUrl,
   onPreview,
 }: {
   form: FormSchema;
   countMap: Record<string, number>;
-  baseUrl: string;
   onPreview: (f: FormSchema) => void;
 }) {
   return (
@@ -104,7 +101,7 @@ function FormRow({
           >
             👁 Preview
           </button>
-          <CopyLinkButton url={`${baseUrl}?id=${form.id}`} />
+          <CopyLinkButton formId={form.id} />
           <ArchiveButton formId={form.id} />
         </div>
       </td>
@@ -119,7 +116,6 @@ function AreaSection({
   description,
   forms,
   countMap,
-  baseUrl,
   onPreview,
 }: {
   areaKey: AreaKey;
@@ -128,7 +124,6 @@ function AreaSection({
   description: string;
   forms: FormSchema[];
   countMap: Record<string, number>;
-  baseUrl: string;
   onPreview: (f: FormSchema) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -233,7 +228,6 @@ function AreaSection({
                   key={form.id}
                   form={form}
                   countMap={countMap}
-                  baseUrl={baseUrl}
                   onPreview={onPreview}
                 />
               ))}
@@ -247,7 +241,7 @@ function AreaSection({
 
 // ── Main export ───────────────────────────────────────────────────────────────
 
-export default function FormsTable({ forms, countMap, baseUrl }: Props) {
+export default function FormsTable({ forms, countMap }: Props) {
   const [preview, setPreview] = useState<FormSchema | null>(null);
 
   if (!forms || forms.length === 0) {
@@ -284,7 +278,6 @@ export default function FormsTable({ forms, countMap, baseUrl }: Props) {
           description={area.description}
           forms={grouped[area.key]}
           countMap={countMap}
-          baseUrl={baseUrl}
           onPreview={setPreview}
         />
       ))}
