@@ -58,12 +58,12 @@ export async function GET(req: NextRequest) {
     countMap[row.form_id] = (countMap[row.form_id] ?? 0) + 1;
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_GITHUB_PAGES_BASE_URL ?? '';
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://olympic-paints-forms-admin.vercel.app').replace(/\/$/, '');
 
   const result = forms.map(f => ({
     ...f,
     submission_count: countMap[f.id] ?? 0,
-    public_url: `${baseUrl}/f/?id=${f.id}`,
+    public_url: `${appUrl}/f/${f.id}`,
   }));
 
   return NextResponse.json({ forms: result }, { headers: corsHeaders(origin) });
