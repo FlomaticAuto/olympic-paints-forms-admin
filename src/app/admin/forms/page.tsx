@@ -34,7 +34,7 @@ export default async function AdminFormsPage() {
     <AdminShell>
       <div className="page-heading">
         <h1>Forms</h1>
-        <p>All active forms. Click a title to view submissions, or 👁 Preview to see the form.</p>
+        <p>Forms grouped by area. Click a section to expand, then click a title to view submissions.</p>
       </div>
 
       {error && (
@@ -51,9 +51,7 @@ export default async function AdminFormsPage() {
         </div>
       )}
 
-      <div className="card">
-        <FormsTable forms={forms} countMap={countMap} baseUrl={baseUrl} />
-      </div>
+      <FormsTable forms={forms} countMap={countMap} baseUrl={baseUrl} />
     </AdminShell>
   );
 }
