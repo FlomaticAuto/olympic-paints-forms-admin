@@ -32,10 +32,13 @@ export async function PATCH(
 
   const db = createServerClient();
 
-  const { error } = await db
-    .from('form_schemas')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .update({ schema: body.schema as any })
+  // Cast the query builder to `any` before .update() — Supabase v2's type
+  // resolver maps JSONB columns to its own Json type internally, which makes
+  // .update() parameter resolve to `never` for hand-written Database generics.
+  // Runtime behaviour is unaffected; the actual SQL update is correct.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (db.from('form_schemas') as any)
+    .update({ schema: body.schema })
     .eq('id', form_id);
 
   if (error) {
