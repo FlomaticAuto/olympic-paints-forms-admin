@@ -168,7 +168,7 @@ export const PRODUCT_DATA: Record<string, ProductInfo> = {
     sizes: PVA_SIZES,
   },
   '7-IN-1': {
-    colours: ['Sand Storm', 'Rim Rock', 'Stone Grey', 'Night Sky', 'Mushroom', 'Silver Mist', 'Pebble Stone', 'Espresso Grey'],
+    colours: ['White', 'Sand Storm', 'Rim Rock', 'Stone Grey', 'Night Sky', 'Mushroom', 'Silver Mist', 'Pebble Stone', 'Espresso Grey'],
     sizes: PVA_SIZES,
   },
 
