@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
-import type { FormField } from '@/lib/supabase/types';
 
 // PATCH /api/forms/[form_id]
 // Body: { schema: FormField[] }  — replaces the stored schema in-place.
@@ -35,7 +34,8 @@ export async function PATCH(
 
   const { error } = await db
     .from('form_schemas')
-    .update({ schema: body.schema as FormField[] })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .update({ schema: body.schema as any })
     .eq('id', form_id);
 
   if (error) {
