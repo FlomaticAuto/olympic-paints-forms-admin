@@ -144,7 +144,7 @@ export const PRODUCT_DATA: Record<string, ProductInfo> = {
 
   // ── PVA ──
   'Master Decorators Acrylic PVA': {
-    colours: ['Rice White', 'Silver Sand', 'Brazil Nut', 'Desert Camel', 'Umhlanga Tan', 'Cream', 'Pebble Stone', 'Stone Grey', 'Shiloh', 'Night Sky', 'Fossil Green', 'Tennessee', 'African Kudu', 'Kalahari', 'Peach', 'Sunset Yellow', 'Autumn Wheat'],
+    colours: ['White', 'Silver Sand', 'Brazil Nut', 'Desert Camel', 'Umhlanga Tan', 'Cream', 'Pebble Stone', 'Stone Grey', 'Shiloh', 'Night Sky', 'Fossil Green', 'Tennessee', 'African Kudu', 'Kalahari', 'Peach', 'Sunset Yellow', 'Autumn Wheat'],
     sizes: PVA_SIZES,
   },
   'Kalahari Contractors PVA': {
