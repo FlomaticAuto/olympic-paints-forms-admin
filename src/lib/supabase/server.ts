@@ -7,13 +7,13 @@ import type { Database } from './types';
  * Never import in client components or expose to the browser.
  */
 export function createServerClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const url = process.env.SUPABASE_URL
+    || process.env.NEXT_PUBLIC_SUPABASE_URL
+    || 'https://bpblxplotublqsecdkcb.supabase.co';
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!url || !key) {
-    throw new Error(
-      'Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY env vars'
-    );
+  if (!key) {
+    throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY env var');
   }
 
   return createClient<Database>(url, key, {
