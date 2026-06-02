@@ -10,6 +10,8 @@ interface Store {
   id: string;
   name: string;
   code: string | null;
+  dlref: string | null;
+  curef: string | null;
   address: string | null;
   town: string | null;
   area: string | null;
@@ -390,7 +392,10 @@ export default function StoreVisitBookingForm({ formId }: Props) {
                       onMouseDown={() => selectStore(s)}
                     >
                       <span className="svb-dropdown-name">{s.name}</span>
-                      {s.code && <span className="svb-dropdown-code">{s.code}</span>}
+                      <span className="svb-dropdown-refs">
+                        {s.dlref && <span className="svb-dropdown-dlref">DL: {s.dlref}</span>}
+                        {s.curef && s.curef !== s.dlref && <span className="svb-dropdown-curef">CU: {s.curef}</span>}
+                      </span>
                       {(s.address || s.town) && (
                         <span className="svb-dropdown-addr">
                           {[s.address, s.town].filter(Boolean).join(', ')}
@@ -409,10 +414,18 @@ export default function StoreVisitBookingForm({ formId }: Props) {
             {/* Auto-populated address */}
             {selectedStore && storeHasAddress && (
               <div className="svb-store-card">
-                <div className="svb-store-card-row">
-                  <span className="svb-store-card-label">Code</span>
-                  <span className="svb-store-card-val">{selectedStore.code ?? '—'}</span>
-                </div>
+                {selectedStore.dlref && (
+                  <div className="svb-store-card-row">
+                    <span className="svb-store-card-label">DL Ref</span>
+                    <span className="svb-store-card-val">{selectedStore.dlref}</span>
+                  </div>
+                )}
+                {selectedStore.curef && selectedStore.curef !== selectedStore.dlref && (
+                  <div className="svb-store-card-row">
+                    <span className="svb-store-card-label">CU Ref</span>
+                    <span className="svb-store-card-val">{selectedStore.curef}</span>
+                  </div>
+                )}
                 <div className="svb-store-card-row">
                   <span className="svb-store-card-label">Address</span>
                   <span className="svb-store-card-val">{storeAddress}</span>
@@ -874,6 +887,19 @@ const css = `
   }
   .svb-dropdown-addr {
     font-size: 12px; color: var(--muted);
+  }
+  .svb-dropdown-refs {
+    display: flex; gap: 8px; align-items: center;
+  }
+  .svb-dropdown-dlref {
+    font-size: 11px; font-weight: 700;
+    color: var(--yellow); letter-spacing: 0.05em;
+    font-family: 'Barlow Condensed', sans-serif;
+  }
+  .svb-dropdown-curef {
+    font-size: 11px; font-weight: 600;
+    color: var(--muted); letter-spacing: 0.04em;
+    font-family: 'Barlow Condensed', sans-serif;
   }
 
   /* ── Store card (auto-populated) ── */

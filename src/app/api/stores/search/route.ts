@@ -16,8 +16,8 @@ export async function GET(req: NextRequest) {
 
   let query = db
     .from('stores')
-    .select('id,name,code,address,town,area')
-    .or(`name.ilike.%${q}%,code.ilike.%${q}%,town.ilike.%${q}%`);
+    .select('id,name,code,dlref,curef,address,town,area')
+    .or(`name.ilike.%${q}%,dlref.ilike.%${q}%,curef.ilike.%${q}%,code.ilike.%${q}%,town.ilike.%${q}%`);
 
   if (rep) {
     query = query.eq('rep', rep);
