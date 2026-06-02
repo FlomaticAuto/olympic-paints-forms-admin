@@ -16,7 +16,15 @@ interface Store {
 }
 
 const REPS = ['Bhadresh', 'Nikhil', 'Byron', 'Amit', 'Aboo', 'Quintus'];
-const MERCHANDISERS = ['Goolat'];
+const AD_HOC_STORE: Store = {
+  id: '524d7d88-d8cf-4c9b-b363-afe2e07bc86b',
+  name: 'Ad Hoc',
+  code: 'ADHOC',
+  address: 'Not Applicable',
+  town: null,
+  area: null,
+};
+const MERCHANDISERS = ['Gulab'];
 const PURPOSES = [
   'Inventory Check',
   'Product Display Review',
@@ -80,6 +88,7 @@ export default function StoreVisitBookingForm({ formId }: Props) {
   const [visitTime,      setVisitTime]      = useState('');
   const [description,    setDescription]    = useState('');
   const [manualAddress,  setManualAddress]  = useState('');
+  const [adHoc,          setAdHoc]          = useState(false);
   const [busy,         setBusy]         = useState(false);
   const [done,         setDone]         = useState(false);
   const [error,        setError]        = useState<string | null>(null);
@@ -133,12 +142,24 @@ export default function StoreVisitBookingForm({ formId }: Props) {
     setStoreOpen(false);
   }
 
+  function toggleAdHoc(checked: boolean) {
+    setAdHoc(checked);
+    if (checked) {
+      setSelectedStore(AD_HOC_STORE);
+      setStoreQuery(AD_HOC_STORE.name);
+      setStoreOpen(false);
+      setStoreResults([]);
+    } else {
+      clearStore();
+    }
+  }
+
   function toggleTask(t: string) {
     setTasks(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
   }
 
   const storeHasAddress = !!(selectedStore && (selectedStore.address || selectedStore.town));
-  const needsManualAddress = selectedStore && !storeHasAddress;
+  const needsManualAddress = selectedStore && !storeHasAddress && !adHoc;
 
   const canSubmit =
     bookedBy &&
@@ -227,7 +248,7 @@ export default function StoreVisitBookingForm({ formId }: Props) {
           </p>
           <button className="svb-submit" style={{ marginTop: 24 }} onClick={() => {
             setDone(false); setBusy(false); setError(null);
-            setBookedBy(''); clearStore(); setPurpose(''); setTasks([]);
+            setBookedBy(''); clearStore(); setAdHoc(false); setPurpose(''); setTasks([]);
             setMerchandiser(''); setManager(''); setVisitDate(todayLocal());
             setVisitTime(''); setDescription(''); setManualAddress('');
           }}>
@@ -342,11 +363,12 @@ export default function StoreVisitBookingForm({ formId }: Props) {
                   className="svb-input svb-search-input"
                   placeholder="Type store name, code or town…"
                   value={storeQuery}
-                  onChange={e => { setStoreQuery(e.target.value); if (selectedStore) clearStore(); }}
+                  disabled={adHoc}
+                  onChange={e => { setStoreQuery(e.target.value); if (selectedStore && !adHoc) clearStore(); }}
                   onFocus={() => { if (storeResults.length > 0) setStoreOpen(true); }}
                   autoComplete="off"
                 />
-                {selectedStore && (
+                {selectedStore && !adHoc && (
                   <button type="button" className="svb-search-clear" onClick={clearStore} aria-label="Clear store">
                     ×
                   </button>
@@ -379,8 +401,19 @@ export default function StoreVisitBookingForm({ formId }: Props) {
               )}
             </div>
 
+            {/* Ad Hoc toggle */}
+            <label className="svb-adhoc-row">
+              <input
+                type="checkbox"
+                className="svb-checkbox"
+                checked={adHoc}
+                onChange={e => toggleAdHoc(e.target.checked)}
+              />
+              <span className="svb-adhoc-label">Store not on system yet (Ad Hoc visit)</span>
+            </label>
+
             {/* Auto-populated address */}
-            {selectedStore && storeHasAddress && (
+            {selectedStore && storeHasAddress && !adHoc && (
               <div className="svb-store-card">
                 <div className="svb-store-card-row">
                   <span className="svb-store-card-label">Code</span>
@@ -389,6 +422,17 @@ export default function StoreVisitBookingForm({ formId }: Props) {
                 <div className="svb-store-card-row">
                   <span className="svb-store-card-label">Address</span>
                   <span className="svb-store-card-val">{storeAddress}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Ad Hoc confirmation card */}
+            {adHoc && (
+              <div className="svb-adhoc-card">
+                <span className="svb-adhoc-card-icon">ℹ</span>
+                <div>
+                  <div className="svb-adhoc-card-title">Ad Hoc Visit</div>
+                  <div className="svb-adhoc-card-sub">No store record required. Address logged as Not Applicable.</div>
                 </div>
               </div>
             )}
@@ -952,6 +996,46 @@ const css = `
   .svb-sub {
     color: var(--muted); font-size: 15px;
     line-height: 1.6; margin-top: 12px;
+  }
+
+  /* ── Ad Hoc toggle row ── */
+  .svb-adhoc-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px; margin-top: 6px;
+    background: var(--sunken);
+    border: 1px dashed var(--border);
+    border-radius: 7px; cursor: pointer;
+    transition: background 0.08s;
+  }
+  .svb-adhoc-row:hover { background: var(--elev); }
+  .svb-adhoc-label {
+    font-size: 13px; color: var(--muted); user-select: none;
+  }
+
+  /* ── Ad Hoc confirmation card ── */
+  .svb-adhoc-card {
+    display: flex; align-items: flex-start; gap: 10px;
+    margin-top: 8px;
+    background: var(--section-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 14px;
+  }
+  .svb-adhoc-card-icon {
+    font-size: 16px; color: var(--yellow); flex-shrink: 0; line-height: 1.4;
+  }
+  .svb-adhoc-card-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 13px;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--yellow);
+  }
+  .svb-adhoc-card-sub {
+    font-size: 12px; color: var(--muted); margin-top: 2px;
+  }
+
+  /* ── Disabled search input ── */
+  .svb-input:disabled {
+    opacity: 0.45; cursor: not-allowed;
   }
 
   /* ── Responsive ── */
