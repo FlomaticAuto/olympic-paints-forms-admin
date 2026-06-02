@@ -347,7 +347,7 @@ export default function StoreVisitBookingForm({ formId }: Props) {
                   onFocus={() => { if (storeResults.length > 0) setStoreOpen(true); }}
                   autoComplete="off"
                 />
-                {selectedStore && !adHoc && (
+                {selectedStore && (
                   <button type="button" className="svb-search-clear" onClick={clearStore} aria-label="Clear store">
                     ×
                   </button>
