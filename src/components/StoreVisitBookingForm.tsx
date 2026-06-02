@@ -363,8 +363,8 @@ export default function StoreVisitBookingForm({ formId }: Props) {
                   className="svb-input svb-search-input"
                   placeholder="Type store name, code or town…"
                   value={storeQuery}
-                  disabled={adHoc}
-                  onChange={e => { setStoreQuery(e.target.value); if (selectedStore && !adHoc) clearStore(); }}
+                  disabled={!!selectedStore}
+                  onChange={e => { setStoreQuery(e.target.value); if (storeResults.length > 0) setStoreOpen(true); }}
                   onFocus={() => { if (storeResults.length > 0) setStoreOpen(true); }}
                   autoComplete="off"
                 />
