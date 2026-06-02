@@ -28,7 +28,7 @@ function classifyForm(title: string): AreaKey {
   const t = title.toLowerCase();
   if (t.startsWith('olympic vs ') || t.includes('matchup verification')) return 'competitive';
   if (t.startsWith('account intel')) return 'account';
-  if (t.startsWith('merchandising')) return 'merchandising';
+  if (t.startsWith('merchandising') || t.includes('store visit')) return 'merchandising';
   if (t.startsWith('returns intake') || t.startsWith('h&s') || t.startsWith('h & s')) return 'operations';
   if (t.startsWith('pulse')) return 'pulse';
   return 'other';
