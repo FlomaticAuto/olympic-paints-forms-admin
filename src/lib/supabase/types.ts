@@ -68,11 +68,50 @@ export interface FormRespondent {
   created_at:   string;
 }
 
+export interface StoreVisitBooking {
+  id:             string;
+  report_ref:     string;
+  booked_by:      string;
+  store_id:       string | null;
+  store_name:     string;
+  store_code:     string | null;
+  store_address:  string | null;
+  address_source: string | null;
+  purpose:        string;
+  tasks:          string[];
+  merchandiser:   string;
+  manager_name:   string;
+  visit_date:     string | null;
+  visit_time:     string | null;
+  description:    string | null;
+  booking_status: string;
+  created_at:     string;
+}
+
+export interface Store {
+  id:      string;
+  name:    string;
+  code:    string | null;
+  address: string | null;
+  town:    string | null;
+  area:    string | null;
+}
+
 // Minimal Database type for the Supabase generic client.
 // Extend if you add more tables.
 export interface Database {
   public: {
     Tables: {
+      store_visit_bookings: {
+        Row:    StoreVisitBooking;
+        Insert: Omit<StoreVisitBooking, 'id' | 'created_at'> & { id?: string; created_at?: string };
+        Update: Partial<Omit<StoreVisitBooking, 'id'>>;
+      };
+      stores: {
+        Row:    Store;
+        Insert: Omit<Store, 'id'> & { id?: string };
+        Update: Partial<Omit<Store, 'id'>>;
+      };
       form_schemas: {
         Row:    FormSchema;
         Insert: Omit<FormSchema, 'id' | 'created_at'> & { id?: string; created_at?: string };
