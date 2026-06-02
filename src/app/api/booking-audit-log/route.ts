@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
         ? d.tasks.split(',').map((t: string) => t.trim()).filter(Boolean)
         : [];
 
-    const { error } = await db.from('store_visit_bookings').insert({
+    const { error } = await (db as any).from('store_visit_bookings').insert({
       report_ref:    d.report_ref    ?? '',
       booked_by:     d.booked_by     ?? '',
       store_id:      d.store_id      ?? null,
