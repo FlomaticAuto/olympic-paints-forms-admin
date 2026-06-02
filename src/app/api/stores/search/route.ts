@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
 import { corsHeaders } from '@/lib/cors';
 
-// GET /api/stores/search?q=tzaneen
+// GET /api/stores/search?q=tzaneen&rep=AP
 export async function GET(req: NextRequest) {
   const origin = req.headers.get('origin');
-  const q = req.nextUrl.searchParams.get('q')?.trim() ?? '';
+  const q   = req.nextUrl.searchParams.get('q')?.trim() ?? '';
+  const rep = req.nextUrl.searchParams.get('rep')?.trim() ?? '';
 
   if (q.length < 2) {
     return NextResponse.json([], { headers: corsHeaders(origin) });
@@ -13,12 +14,16 @@ export async function GET(req: NextRequest) {
 
   const db = createServerClient();
 
-  const { data, error } = await db
+  let query = db
     .from('stores')
     .select('id,name,code,address,town,area')
-    .or(`name.ilike.%${q}%,code.ilike.%${q}%,town.ilike.%${q}%`)
-    .order('name')
-    .limit(10);
+    .or(`name.ilike.%${q}%,code.ilike.%${q}%,town.ilike.%${q}%`);
+
+  if (rep) {
+    query = query.eq('rep', rep);
+  }
+
+  const { data, error } = await query.order('name').limit(20);
 
   if (error) {
     console.error('[stores/search]', error);

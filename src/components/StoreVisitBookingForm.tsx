@@ -16,6 +16,14 @@ interface Store {
 }
 
 const REPS = ['Bhadresh', 'Nikhil', 'Byron', 'Amit', 'Aboo', 'Quintus'];
+const REP_CODE: Record<string, string> = {
+  Bhadresh: 'BV',
+  Nikhil:   'NP',
+  Byron:    'BM',
+  Amit:     'AP',
+  Aboo:     'AC',
+  Quintus:  'QL',
+};
 const MERCHANDISERS = ['Gulab'];
 const PURPOSES = [
   'Inventory Check',
@@ -72,7 +80,7 @@ export default function StoreVisitBookingForm({ formId }: Props) {
 
   // Form fields
   const [bookedBy,       setBookedBy]       = useState('');
-  const [purpose,        setPurpose]        = useState('');
+  const [purposes,       setPurposes]       = useState<string[]>([]);
   const [tasks,          setTasks]          = useState<string[]>([]);
   const [merchandiser,   setMerchandiser]   = useState('');
   const [manager,        setManager]        = useState('');
@@ -95,7 +103,13 @@ export default function StoreVisitBookingForm({ formId }: Props) {
     return () => document.removeEventListener('mousedown', onClickOutside);
   }, []);
 
-  // Debounced store search
+  // Clear store selection when rep changes
+  useEffect(() => {
+    clearStore();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookedBy]);
+
+  // Debounced store search — filtered by rep when one is selected
   useEffect(() => {
     if (selectedStore) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -107,7 +121,9 @@ export default function StoreVisitBookingForm({ formId }: Props) {
     debounceRef.current = setTimeout(async () => {
       setStoreLoading(true);
       try {
-        const res = await fetch(`/api/stores/search?q=${encodeURIComponent(storeQuery)}`);
+        const repCode = bookedBy ? REP_CODE[bookedBy] ?? '' : '';
+        const url = `/api/stores/search?q=${encodeURIComponent(storeQuery)}${repCode ? `&rep=${repCode}` : ''}`;
+        const res = await fetch(url);
         const data = await res.json();
         setStoreResults(Array.isArray(data) ? data : []);
         setStoreOpen(true);
@@ -117,7 +133,7 @@ export default function StoreVisitBookingForm({ formId }: Props) {
         setStoreLoading(false);
       }
     }, 280);
-  }, [storeQuery, selectedStore]);
+  }, [storeQuery, selectedStore, bookedBy]);
 
   function selectStore(s: Store) {
     setSelectedStore(s);
@@ -133,6 +149,10 @@ export default function StoreVisitBookingForm({ formId }: Props) {
     setStoreOpen(false);
   }
 
+  function togglePurpose(p: string) {
+    setPurposes(prev => prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p]);
+  }
+
   function toggleTask(t: string) {
     setTasks(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
   }
@@ -143,7 +163,7 @@ export default function StoreVisitBookingForm({ formId }: Props) {
   const canSubmit =
     bookedBy &&
     selectedStore &&
-    purpose &&
+    purposes.length > 0 &&
     merchandiser &&
     manager.trim() &&
     visitDate &&
@@ -168,7 +188,7 @@ export default function StoreVisitBookingForm({ formId }: Props) {
       store_code:    selectedStore.code ?? '',
       store_address: resolvedAddress,
       address_source: storeHasAddress ? 'database' : 'manual',
-      purpose,
+      purpose:       purposes.join(', '),
       tasks:         tasks.join(', '),
       merchandiser,
       manager_name:  manager,
@@ -227,7 +247,7 @@ export default function StoreVisitBookingForm({ formId }: Props) {
           </p>
           <button className="svb-submit" style={{ marginTop: 24 }} onClick={() => {
             setDone(false); setBusy(false); setError(null);
-            setBookedBy(''); clearStore(); setPurpose(''); setTasks([]);
+            setBookedBy(''); clearStore(); setPurposes([]); setTasks([]);
             setMerchandiser(''); setManager(''); setVisitDate(todayLocal());
             setVisitTime(''); setDescription(''); setManualAddress('');
           }}>
@@ -332,6 +352,11 @@ export default function StoreVisitBookingForm({ formId }: Props) {
             <label className="svb-label">
               Store Name <span className="svb-req">*</span>
             </label>
+            {bookedBy && (
+              <p className="svb-rep-hint">
+                Showing stores allocated to <strong>{bookedBy}</strong>. Clear rep selection to search all stores.
+              </p>
+            )}
             <div className="svb-search-wrap">
               <div className="svb-search-input-row">
                 <span className="svb-search-icon">
@@ -427,19 +452,21 @@ export default function StoreVisitBookingForm({ formId }: Props) {
           <div className="svb-section-label">Visit Details</div>
           <div className="svb-row-2">
 
-            {/* Purpose */}
+            {/* Purpose — multi-select */}
             <div className="svb-field">
               <label className="svb-label">
                 Purpose of Visit <span className="svb-req">*</span>
+                <span className="svb-multi-hint"> — select all that apply</span>
               </label>
               <div className="svb-pill-grid svb-pill-grid-3">
                 {PURPOSES.map(p => (
                   <button
                     key={p}
                     type="button"
-                    className={`svb-pill${purpose === p ? ' is-active' : ''}`}
-                    onClick={() => setPurpose(p)}
+                    className={`svb-pill${purposes.includes(p) ? ' is-active' : ''}`}
+                    onClick={() => togglePurpose(p)}
                   >
+                    {purposes.includes(p) && <span className="svb-pill-check">✓ </span>}
                     {p}
                   </button>
                 ))}
@@ -962,12 +989,70 @@ const css = `
     opacity: 0.45; cursor: not-allowed;
   }
 
-  /* ── Responsive ── */
+  /* ── Rep filter hint ── */
+  .svb-rep-hint {
+    font-size: 12px; color: var(--muted);
+    background: var(--section-bg);
+    border: 1px solid var(--border-s);
+    border-radius: 6px; padding: 6px 10px; margin: 0;
+  }
+  .svb-rep-hint strong { color: var(--yellow); font-weight: 600; }
+
+  /* ── Multi-select hint ── */
+  .svb-multi-hint {
+    font-size: 10px; color: var(--dim);
+    font-weight: 400; text-transform: none; letter-spacing: 0;
+  }
+
+  /* ── Pill checkmark ── */
+  .svb-pill-check { font-size: 11px; }
+
+  /* ── Mobile ── */
   @media (max-width: 680px) {
-    .svb-row-2, .svb-row-3 { grid-template-columns: 1fr; }
-    .svb-pill-grid-3 { grid-template-columns: 1fr 1fr; }
-    .svb-header { flex-wrap: wrap; }
+    .svb-wrap { padding: 0; }
+
+    .svb-frame { gap: 0; border-radius: 0; }
+
+    .svb-header {
+      flex-wrap: wrap;
+      gap: 8px;
+      border-radius: 0;
+      padding: 12px 14px;
+      position: sticky; top: 0; z-index: 10;
+    }
+    .svb-logo-wrap { width: 30px; height: 30px; }
+    .svb-eyebrow { font-size: 9px; }
+    h1 { font-size: 18px; }
     .svb-meta { margin-left: auto; }
-    .svb-theme-toggle { margin-left: 0; width: 100%; }
+    .svb-meta-val { font-size: 12px; }
+    .svb-theme-toggle { margin-left: 0; width: 100%; justify-content: stretch; }
+    .svb-theme-btn { flex: 1; text-align: center; padding: 8px 4px; font-size: 10px; }
+
+    .svb-body { padding: 14px 12px 32px; gap: 14px; border-radius: 0; }
+
+    .svb-row-2, .svb-row-3 { grid-template-columns: 1fr; gap: 14px; }
+
+    .svb-pill-grid-3 { grid-template-columns: 1fr 1fr; gap: 6px; }
+    .svb-pill { font-size: 12px; padding: 10px 8px; min-height: 44px; }
+
+    .svb-input { font-size: 16px; min-height: 46px; }
+    .svb-textarea { min-height: 80px; }
+
+    .svb-check-row { padding: 10px 12px; min-height: 44px; }
+
+    .svb-submit { min-height: 54px; font-size: 17px; border-radius: 12px; }
+
+    .svb-dropdown { max-height: 220px; }
+    .svb-dropdown-item { padding: 12px 14px; }
+
+    .svb-section-label { font-size: 10px; margin-top: 2px; }
+
+    .svb-thanks { margin: 24px 16px; padding: 32px 20px; }
+  }
+
+  /* ── Touch tap highlight ── */
+  @media (hover: none) {
+    .svb-pill:hover, .svb-check-row:hover { background: var(--sunken); border-color: var(--border); }
+    .svb-pill.is-active:hover { background: var(--sel-bg); }
   }
 `;
