@@ -137,11 +137,16 @@ export async function POST(req: NextRequest) {
   const verb      = decision === 'approved' ? 'APPROVED ✓' : 'REJECTED ✕';
 
   // Email decision notification
-  sendDecisionEmail(
-    decision, approver_name ?? '',
-    decl.employee_name, decl.employee_id,
-    decl.activity_type, dateRange, decl.location, notes,
-  ).catch(e => console.error('[offsite/approve email]', e));
+  try {
+    await sendDecisionEmail(
+      decision, approver_name ?? '',
+      decl.employee_name, decl.employee_id,
+      decl.activity_type, dateRange, decl.location, notes,
+    );
+    console.log('[offsite/approve email] sent');
+  } catch (e) {
+    console.error('[offsite/approve email] FAILED:', e);
+  }
 
   // Telegram notification
   if (TELEGRAM_TOKEN) {

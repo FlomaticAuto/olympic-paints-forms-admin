@@ -190,11 +190,16 @@ export async function POST(req: NextRequest) {
     approvalUrl,
   });
 
-  sendMail({
-    to: APPROVAL_EMAIL,
-    subject: `Off-Site Approval Required — ${employee_name} (${activity_type})`,
-    html: emailHtml,
-  }).catch(e => console.error('[offsite/declare email]', e));
+  try {
+    await sendMail({
+      to: APPROVAL_EMAIL,
+      subject: `Off-Site Approval Required — ${employee_name} (${activity_type})`,
+      html: emailHtml,
+    });
+    console.log('[offsite/declare email] sent to', APPROVAL_EMAIL);
+  } catch (e) {
+    console.error('[offsite/declare email] FAILED:', e);
+  }
 
   // Telegram to Quintus for visibility
   if (TELEGRAM_TOKEN) {
