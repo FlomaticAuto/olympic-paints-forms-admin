@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
+import { sendMail } from '@/lib/mailer';
 
 const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? '';
 const TELEGRAM_CHAT  = '8042233389';
-const RESEND_API_KEY = process.env.RESEND_API_KEY ?? '';
 // WhatsApp notifications disabled until the approval channel is ready.
 // const WA_WEBHOOK  = process.env.WHATSAPP_WEBHOOK_URL ?? '';
 
@@ -67,18 +67,10 @@ async function sendDecisionEmail(
 </table>
 </body></html>`;
 
-  await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${RESEND_API_KEY}`,
-    },
-    body: JSON.stringify({
-      from: 'HAVEN HR <haven@olympicpaints.co.za>',
-      to: [NOTIFICATION_EMAIL],
-      subject: `Off-Site Declaration ${verb} — ${employeeName} (${activityType})`,
-      html,
-    }),
+  await sendMail({
+    to: NOTIFICATION_EMAIL,
+    subject: `Off-Site Declaration ${verb} — ${employeeName} (${activityType})`,
+    html,
   }).catch(e => console.error('[offsite/approve email]', e));
 }
 

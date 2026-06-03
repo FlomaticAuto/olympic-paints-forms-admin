@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
+import { sendMail } from '@/lib/mailer';
 
 const APP_URL        = process.env.NEXT_PUBLIC_APP_URL ?? '';
 const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? '';
 const TELEGRAM_CHAT  = '8042233389';
-const RESEND_API_KEY = process.env.RESEND_API_KEY ?? '';
 // WhatsApp is disabled until the approval channel is ready.
 // const WA_WEBHOOK  = process.env.WHATSAPP_WEBHOOK_URL ?? '';
 
@@ -104,29 +104,6 @@ function buildApprovalEmail(opts: {
 </body></html>`;
 }
 
-async function sendApprovalEmail(to: string, subject: string, html: string) {
-  if (!RESEND_API_KEY) {
-    console.warn('[offsite/declare] RESEND_API_KEY not set — skipping email');
-    return;
-  }
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${RESEND_API_KEY}`,
-    },
-    body: JSON.stringify({
-      from: 'HAVEN HR <haven@olympicpaints.co.za>',
-      to: [to],
-      subject,
-      html,
-    }),
-  });
-  if (!res.ok) {
-    const err = await res.text();
-    console.error('[offsite/declare email]', res.status, err);
-  }
-}
 
 // POST /api/offsite/declare
 // Public — employee submits an off-site declaration.
@@ -213,11 +190,11 @@ export async function POST(req: NextRequest) {
     approvalUrl,
   });
 
-  sendApprovalEmail(
-    APPROVAL_EMAIL,
-    `Off-Site Approval Required — ${employee_name} (${activity_type})`,
-    emailHtml,
-  ).catch(e => console.error('[offsite/declare email]', e));
+  sendMail({
+    to: APPROVAL_EMAIL,
+    subject: `Off-Site Approval Required — ${employee_name} (${activity_type})`,
+    html: emailHtml,
+  }).catch(e => console.error('[offsite/declare email]', e));
 
   // Telegram to Quintus for visibility
   if (TELEGRAM_TOKEN) {
