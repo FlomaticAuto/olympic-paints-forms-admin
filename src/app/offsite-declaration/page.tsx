@@ -21,7 +21,7 @@ export default function OffsiteDeclarationPage() {
         gap: 14,
       }}>
         <div style={{ width: 44, height: 44, borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}>
-          <img src="/logo.jpg" alt="Olympic Paints" width={44} height={44}
+          <img src="https://flomaticauto.github.io/olympic-paints-clocking/logo.jpg" alt="Olympic Paints" width={44} height={44}
             style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover' }} />
         </div>
         <div>
