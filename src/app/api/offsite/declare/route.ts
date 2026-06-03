@@ -132,7 +132,7 @@ export async function POST(req: NextRequest) {
     .eq('department', department)
     .maybeSingle();
 
-  const approverName = approverRow?.approver_name ?? 'Quintus Lategan';
+  const approverName = (approverRow as { approver_name?: string } | null)?.approver_name ?? 'Quintus Lategan';
 
   // Fetch employer from employee record
   const { data: empRow } = await db
