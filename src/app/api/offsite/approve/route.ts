@@ -19,7 +19,6 @@ async function sendDecisionEmail(
   location: string,
   notes: string | undefined,
 ) {
-  if (!RESEND_API_KEY) return;
   const isApproved = decision === 'approved';
   const verb       = isApproved ? 'APPROVED' : 'REJECTED';
   const colour     = isApproved ? '#2D8C7A' : '#E86060';
