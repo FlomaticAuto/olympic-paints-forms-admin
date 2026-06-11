@@ -22,7 +22,8 @@ export async function POST(req: NextRequest) {
 
   const { data, error } = await db
     .from('store_visit_captures')
-    .insert(body as unknown as Omit<StoreVisitCapture, 'id' | 'submitted_at'>)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .insert(body as any)
     .select('id,submitted_at')
     .single();
 
