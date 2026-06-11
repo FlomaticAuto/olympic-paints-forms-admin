@@ -10,6 +10,7 @@ const CONDITIONS = ['Poor', 'Fair', 'Good', 'Excellent'] as const;
 type Condition = typeof CONDITIONS[number];
 
 interface Booking {
+  report_ref: string;
   store_name: string;
   store_address: string | null;
   visit_date: string;
@@ -66,11 +67,20 @@ export default function StoreVisitCaptureForm() {
   }, []);
   const setTheme = (t: Theme) => { setThemeState(t); window.localStorage.setItem(THEME_KEY, t); };
 
-  // Step 0: SVB ref lookup
-  const [svbRef,      setSvbRef]      = useState('');
-  const [booking,     setBooking]     = useState<Booking | null>(null);
-  const [lookupBusy,  setLookupBusy]  = useState(false);
-  const [lookupErr,   setLookupErr]   = useState<string | null>(null);
+  // Step 0: open bookings dropdown
+  const [openBookings,  setOpenBookings]  = useState<Booking[]>([]);
+  const [loadingList,   setLoadingList]   = useState(true);
+  const [svbRef,        setSvbRef]        = useState('');
+  const [booking,       setBooking]       = useState<Booking | null>(null);
+  const [lookupErr,     setLookupErr]     = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch('/api/visit-capture/open-bookings')
+      .then(r => r.json())
+      .then(j => setOpenBookings(j.bookings ?? []))
+      .catch(() => {})
+      .finally(() => setLoadingList(false));
+  }, []);
 
   // Section 1
   const [checkinTime, setCheckinTime] = useState(nowLocal);
@@ -126,27 +136,14 @@ export default function StoreVisitCaptureForm() {
 
   const isGazebo = booking?.purpose?.toLowerCase().includes('gazebo');
 
-  // ── Lookup booking by SVB ref ─────────────────────────────────────────────
-  async function lookupBooking() {
-    const ref = svbRef.trim().toUpperCase();
-    if (!ref) return;
-    setLookupBusy(true);
+  // ── Select booking from dropdown ─────────────────────────────────────────
+  function selectBooking(ref: string) {
+    setSvbRef(ref);
     setLookupErr(null);
-    try {
-      const res = await fetch(`/api/visit-capture/lookup?ref=${encodeURIComponent(ref)}`);
-      const j = await res.json();
-      if (!res.ok || !j.booking) {
-        setLookupErr(j.error ?? 'Booking not found. Check the ref and try again.');
-        setBooking(null);
-      } else {
-        setBooking(j.booking);
-        setCheckinTime(nowLocal());
-      }
-    } catch {
-      setLookupErr('Network error — please try again.');
-    } finally {
-      setLookupBusy(false);
-    }
+    if (!ref) { setBooking(null); return; }
+    const found = openBookings.find(b => b.report_ref === ref) ?? null;
+    setBooking(found);
+    if (found) setCheckinTime(nowLocal());
   }
 
   // ── Photo select + immediate upload ──────────────────────────────────────
@@ -160,7 +157,7 @@ export default function StoreVisitCaptureForm() {
       const fd = new FormData();
       fd.append('file', file);
       fd.append('key', key);
-      fd.append('ref', svbRef.trim().toUpperCase());
+      fd.append('ref', booking?.report_ref ?? svbRef.trim().toUpperCase());
       const res = await fetch('/api/visit-capture/upload-photo', { method: 'POST', body: fd });
       const j = await res.json();
       if (res.ok && j.url) {
@@ -181,7 +178,7 @@ export default function StoreVisitCaptureForm() {
     setError(null);
 
     const payload = {
-      report_ref:                svbRef.trim().toUpperCase(),
+      report_ref:                booking.report_ref,
       store_name:                booking.store_name,
       store_address:             booking.store_address ?? '',
       visit_date:                booking.visit_date,
@@ -234,7 +231,7 @@ export default function StoreVisitCaptureForm() {
         <div className="svc-thanks">
           <div className="svc-check">✓</div>
           <h1>Visit Captured</h1>
-          <p className="svc-ref">{svbRef.trim().toUpperCase()}</p>
+          <p className="svc-ref">{booking?.report_ref ?? svbRef}</p>
           <p className="svc-sub">Store visit for <strong>{booking?.store_name}</strong> has been recorded.</p>
           <button className="svc-submit" style={{ marginTop: 24 }} onClick={() => {
             setDone(false); setBooking(null); setSvbRef('');
@@ -283,30 +280,35 @@ export default function StoreVisitCaptureForm() {
 
         <div className="svc-body">
 
-          {/* ── Section 1: Booking lookup ── */}
-          <div className="svc-section-label">Booking Reference</div>
+          {/* ── Section 1: Store selection ── */}
+          <div className="svc-section-label">Select Store Visit</div>
           <div className="svc-field">
-            <label className="svc-label" htmlFor="svc-ref">SVB Reference <span className="svc-req">*</span></label>
-            <div className="svc-lookup-row">
-              <input
-                id="svc-ref"
-                type="text"
-                className="svc-input"
-                placeholder="e.g. SVB-260603-1234"
-                value={svbRef}
-                onChange={e => { setSvbRef(e.target.value.toUpperCase()); setBooking(null); setLookupErr(null); }}
-                disabled={!!booking}
-                autoCapitalize="characters"
-              />
-              {!booking
-                ? <button type="button" className="svc-lookup-btn" onClick={lookupBooking} disabled={svbRef.length < 5 || lookupBusy}>
-                    {lookupBusy ? '…' : 'Load'}
-                  </button>
-                : <button type="button" className="svc-lookup-clear" onClick={() => { setBooking(null); setSvbRef(''); setLookupErr(null); }}>
-                    Change
-                  </button>
-              }
-            </div>
+            <label className="svc-label" htmlFor="svc-ref">Store to Visit <span className="svc-req">*</span></label>
+            {loadingList
+              ? <p className="svc-hint">Loading booked visits…</p>
+              : openBookings.length === 0
+                ? <p className="svc-error-inline">No open visits booked. Ask your rep to book a visit first.</p>
+                : <select
+                    id="svc-ref"
+                    className="svc-input"
+                    value={svbRef}
+                    onChange={e => selectBooking(e.target.value)}
+                    disabled={!!booking}
+                  >
+                    <option value="">— Select a store —</option>
+                    {openBookings.map(b => (
+                      <option key={b.report_ref} value={b.report_ref}>
+                        {b.store_name} · {b.visit_date}
+                      </option>
+                    ))}
+                  </select>
+            }
+            {booking && (
+              <button type="button" className="svc-lookup-clear" style={{ marginTop: 8 }}
+                onClick={() => { setBooking(null); setSvbRef(''); setLookupErr(null); }}>
+                Change Store
+              </button>
+            )}
             {lookupErr && <p className="svc-error svc-error-inline">{lookupErr}</p>}
           </div>
 
