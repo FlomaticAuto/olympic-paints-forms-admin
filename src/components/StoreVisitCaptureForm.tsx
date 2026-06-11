@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef, FormEvent, ChangeEvent } from 'react';
+import { useState, useEffect, useRef, useCallback, FormEvent, ChangeEvent } from 'react';
 
 type Theme = 'theme-dark' | 'theme-light' | 'theme-navy';
 const THEME_KEY = 'svc-theme';
@@ -18,6 +18,26 @@ interface Booking {
   tasks: string[];
   merchandiser: string;
 }
+
+interface StoreResult {
+  id: string;
+  name: string;
+  code: string;
+  dlref: string | null;
+  curef: string | null;
+  address: string | null;
+  town: string | null;
+}
+
+const ADHOC_PURPOSES = [
+  'Inventory Check',
+  'Product Display Review',
+  'Sales Training',
+  'New Product Launch',
+  'Merchandising',
+  'Gazebo Day',
+  'Ad-hoc Visit',
+] as const;
 
 interface PhotoField {
   key: string;
@@ -59,6 +79,15 @@ function todayLocal(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+function genAdhocRef(): string {
+  const d = new Date();
+  const yy = String(d.getFullYear()).slice(2);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const rnd = String(Math.floor(Math.random() * 9000) + 1000);
+  return `ADH-${yy}${mm}${dd}-${rnd}`;
+}
+
 export default function StoreVisitCaptureForm() {
   const [theme, setThemeState] = useState<Theme>('theme-dark');
   useEffect(() => {
@@ -67,6 +96,9 @@ export default function StoreVisitCaptureForm() {
   }, []);
   const setTheme = (t: Theme) => { setThemeState(t); window.localStorage.setItem(THEME_KEY, t); };
 
+  // Visit mode: booked vs ad-hoc
+  const [visitMode, setVisitMode] = useState<'booked' | 'adhoc'>('booked');
+
   // Step 0: open bookings dropdown
   const [openBookings,  setOpenBookings]  = useState<Booking[]>([]);
   const [loadingList,   setLoadingList]   = useState(true);
@@ -74,12 +106,40 @@ export default function StoreVisitCaptureForm() {
   const [booking,       setBooking]       = useState<Booking | null>(null);
   const [lookupErr,     setLookupErr]     = useState<string | null>(null);
 
+  // Ad-hoc mode state
+  const [adhocQuery,      setAdhocQuery]      = useState('');
+  const [adhocResults,    setAdhocResults]    = useState<StoreResult[]>([]);
+  const [adhocSearching,  setAdhocSearching]  = useState(false);
+  const [adhocStore,      setAdhocStore]      = useState<StoreResult | null>(null);
+  const [adhocPurpose,    setAdhocPurpose]    = useState('');
+  const [adhocDate,       setAdhocDate]       = useState(todayLocal);
+  const [adhocRef,        setAdhocRef]        = useState('');
+
   useEffect(() => {
     fetch('/api/visit-capture/open-bookings')
       .then(r => r.json())
       .then(j => setOpenBookings(j.bookings ?? []))
       .catch(() => {})
       .finally(() => setLoadingList(false));
+  }, []);
+
+  // Debounced store search for ad-hoc mode
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchStores = useCallback((q: string) => {
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    if (q.length < 2) { setAdhocResults([]); return; }
+    searchTimeout.current = setTimeout(async () => {
+      setAdhocSearching(true);
+      try {
+        const res = await fetch(`/api/stores/search?q=${encodeURIComponent(q)}`);
+        const data = await res.json();
+        setAdhocResults(Array.isArray(data) ? data : []);
+      } catch {
+        setAdhocResults([]);
+      } finally {
+        setAdhocSearching(false);
+      }
+    }, 300);
   }, []);
 
   // Section 1
@@ -134,7 +194,8 @@ export default function StoreVisitCaptureForm() {
   const [done,   setDone]   = useState(false);
   const [error,  setError]  = useState<string | null>(null);
 
-  const isGazebo = booking?.purpose?.toLowerCase().includes('gazebo');
+  const effectivePurpose = visitMode === 'adhoc' ? adhocPurpose : (booking?.purpose ?? '');
+  const isGazebo = effectivePurpose.toLowerCase().includes('gazebo');
 
   // ── Select booking from dropdown ─────────────────────────────────────────
   function selectBooking(ref: string) {
@@ -144,6 +205,25 @@ export default function StoreVisitCaptureForm() {
     const found = openBookings.find(b => b.report_ref === ref) ?? null;
     setBooking(found);
     if (found) setCheckinTime(nowLocal());
+  }
+
+  // ── Ad-hoc: select store from search results ──────────────────────────────
+  function selectAdhocStore(store: StoreResult) {
+    setAdhocStore(store);
+    setAdhocQuery(store.name);
+    setAdhocResults([]);
+    setAdhocRef(genAdhocRef());
+    setCheckinTime(nowLocal());
+  }
+
+  // ── Switch mode: clear the other mode's state ─────────────────────────────
+  function switchMode(mode: 'booked' | 'adhoc') {
+    setVisitMode(mode);
+    // clear booked
+    setBooking(null); setSvbRef(''); setLookupErr(null);
+    // clear adhoc
+    setAdhocStore(null); setAdhocQuery(''); setAdhocResults([]);
+    setAdhocPurpose(''); setAdhocDate(todayLocal()); setAdhocRef('');
   }
 
   // ── Photo select + immediate upload ──────────────────────────────────────
@@ -157,7 +237,7 @@ export default function StoreVisitCaptureForm() {
       const fd = new FormData();
       fd.append('file', file);
       fd.append('key', key);
-      fd.append('ref', booking?.report_ref ?? svbRef.trim().toUpperCase());
+      fd.append('ref', visitMode === 'adhoc' ? adhocRef : (booking?.report_ref ?? svbRef.trim().toUpperCase()));
       const res = await fetch('/api/visit-capture/upload-photo', { method: 'POST', body: fd });
       const j = await res.json();
       if (res.ok && j.url) {
@@ -173,16 +253,20 @@ export default function StoreVisitCaptureForm() {
   // ── Submit ────────────────────────────────────────────────────────────────
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!booking) return;
+    if (visitMode === 'booked' && !booking) return;
+    if (visitMode === 'adhoc' && (!adhocStore || !adhocPurpose || !adhocDate)) return;
     setBusy(true);
     setError(null);
 
+    const isAdhoc = visitMode === 'adhoc';
+    const visitDate = isAdhoc ? adhocDate : booking!.visit_date;
+
     const payload = {
-      report_ref:                booking.report_ref,
-      store_name:                booking.store_name,
-      store_address:             booking.store_address ?? '',
-      visit_date:                booking.visit_date,
-      merchandiser:              booking.merchandiser,
+      report_ref:                isAdhoc ? adhocRef : booking!.report_ref,
+      store_name:                isAdhoc ? adhocStore!.name : booking!.store_name,
+      store_address:             isAdhoc ? (adhocStore!.address ?? adhocStore!.town ?? '') : (booking!.store_address ?? ''),
+      visit_date:                visitDate,
+      merchandiser:              isAdhoc ? 'Gulab' : booking!.merchandiser,
 
       checked_stock_location:    checkedStock,
       checked_fifo:              checkedFifo,
@@ -204,8 +288,8 @@ export default function StoreVisitCaptureForm() {
       customer_feedback_reason:  feedbackReason.trim() || null,
       overall_store_condition:   storeCondition || null,
 
-      checked_in_at:  booking.visit_date + 'T' + checkinTime + ':00',
-      checked_out_at: checkoutTime ? booking.visit_date + 'T' + checkoutTime + ':00' : null,
+      checked_in_at:  visitDate + 'T' + checkinTime + ':00',
+      checked_out_at: checkoutTime ? visitDate + 'T' + checkoutTime + ':00' : null,
       gazebo_day_feedback: isGazebo ? (gazeboFeedback.trim() || null) : null,
     };
 
@@ -231,10 +315,12 @@ export default function StoreVisitCaptureForm() {
         <div className="svc-thanks">
           <div className="svc-check">✓</div>
           <h1>Visit Captured</h1>
-          <p className="svc-ref">{booking?.report_ref ?? svbRef}</p>
-          <p className="svc-sub">Store visit for <strong>{booking?.store_name}</strong> has been recorded.</p>
+          <p className="svc-ref">{visitMode === 'adhoc' ? adhocRef : (booking?.report_ref ?? svbRef)}</p>
+          <p className="svc-sub">Store visit for <strong>{visitMode === 'adhoc' ? adhocStore?.name : booking?.store_name}</strong> has been recorded.</p>
           <button className="svc-submit" style={{ marginTop: 24 }} onClick={() => {
             setDone(false); setBooking(null); setSvbRef('');
+            setAdhocStore(null); setAdhocQuery(''); setAdhocResults([]);
+            setAdhocPurpose(''); setAdhocDate(todayLocal()); setAdhocRef('');
             setCheckedStock(null); setCheckedFifo(null); setStockSufficient(null);
             setReplenishment(null); setRepName(''); setMerchCounts(Object.fromEntries(MERCH_ITEMS.map(m => [m.key, 0])));
             setOtherMerch(''); setChartsInPlace(null);
@@ -280,48 +366,149 @@ export default function StoreVisitCaptureForm() {
 
         <div className="svc-body">
 
-          {/* ── Section 1: Store selection ── */}
-          <div className="svc-section-label">Select Store Visit</div>
-          <div className="svc-field">
-            <label className="svc-label" htmlFor="svc-ref">Store to Visit <span className="svc-req">*</span></label>
-            {loadingList
-              ? <p className="svc-hint">Loading booked visits…</p>
-              : openBookings.length === 0
-                ? <p className="svc-error-inline">No open visits booked. Ask your rep to book a visit first.</p>
-                : <select
-                    id="svc-ref"
-                    className="svc-input"
-                    value={svbRef}
-                    onChange={e => selectBooking(e.target.value)}
-                    disabled={!!booking}
-                  >
-                    <option value="">— Select a store —</option>
-                    {openBookings.map(b => (
-                      <option key={b.report_ref} value={b.report_ref}>
-                        {b.store_name} · {b.visit_date}
-                      </option>
-                    ))}
-                  </select>
-            }
-            {booking && (
-              <button type="button" className="svc-lookup-clear" style={{ marginTop: 8 }}
-                onClick={() => { setBooking(null); setSvbRef(''); setLookupErr(null); }}>
-                Change Store
-              </button>
-            )}
-            {lookupErr && <p className="svc-error svc-error-inline">{lookupErr}</p>}
+          {/* ── Visit mode toggle ── */}
+          <div className="svc-mode-toggle" role="group" aria-label="Visit type">
+            <button type="button"
+              className={`svc-mode-btn${visitMode === 'booked' ? ' is-active' : ''}`}
+              onClick={() => switchMode('booked')}>
+              Booked Visit
+            </button>
+            <button type="button"
+              className={`svc-mode-btn${visitMode === 'adhoc' ? ' is-active' : ''}`}
+              onClick={() => switchMode('adhoc')}>
+              Ad-hoc Visit
+            </button>
           </div>
 
-          {booking && (
+          {/* ── Booked visit: dropdown ── */}
+          {visitMode === 'booked' && (
             <>
-              {/* Booking card */}
-              <div className="svc-booking-card">
-                <div className="svc-booking-row"><span className="svc-booking-label">Store</span><span className="svc-booking-val">{booking.store_name}</span></div>
-                {booking.store_address && <div className="svc-booking-row"><span className="svc-booking-label">Address</span><span className="svc-booking-val">{booking.store_address}</span></div>}
-                <div className="svc-booking-row"><span className="svc-booking-label">Date</span><span className="svc-booking-val">{booking.visit_date}</span></div>
-                <div className="svc-booking-row"><span className="svc-booking-label">Purpose</span><span className="svc-booking-val">{booking.purpose}</span></div>
-                {booking.tasks.length > 0 && <div className="svc-booking-row"><span className="svc-booking-label">Tasks</span><span className="svc-booking-val">{booking.tasks.join(', ')}</span></div>}
+              <div className="svc-section-label">Select Booked Visit</div>
+              <div className="svc-field">
+                <label className="svc-label" htmlFor="svc-ref">Store to Visit <span className="svc-req">*</span></label>
+                {loadingList
+                  ? <p className="svc-hint">Loading booked visits…</p>
+                  : openBookings.length === 0
+                    ? <p className="svc-error-inline">No open visits booked. Ask your rep to book a visit first, or use Ad-hoc Visit.</p>
+                    : <select
+                        id="svc-ref"
+                        className="svc-input"
+                        value={svbRef}
+                        onChange={e => selectBooking(e.target.value)}
+                        disabled={!!booking}
+                      >
+                        <option value="">— Select a store —</option>
+                        {openBookings.map(b => (
+                          <option key={b.report_ref} value={b.report_ref}>
+                            {b.store_name} · {b.visit_date}
+                          </option>
+                        ))}
+                      </select>
+                }
+                {booking && (
+                  <button type="button" className="svc-lookup-clear" style={{ marginTop: 8 }}
+                    onClick={() => { setBooking(null); setSvbRef(''); setLookupErr(null); }}>
+                    Change Store
+                  </button>
+                )}
+                {lookupErr && <p className="svc-error svc-error-inline">{lookupErr}</p>}
               </div>
+            </>
+          )}
+
+          {/* ── Ad-hoc visit: store search ── */}
+          {visitMode === 'adhoc' && (
+            <>
+              <div className="svc-section-label">Ad-hoc Visit Details</div>
+
+              <div className="svc-field" style={{ position: 'relative' }}>
+                <label className="svc-label" htmlFor="svc-adhoc-store">Store <span className="svc-req">*</span></label>
+                {adhocStore
+                  ? (
+                    <div className="svc-booking-card">
+                      <div className="svc-booking-row">
+                        <span className="svc-booking-label">Store</span>
+                        <span className="svc-booking-val">{adhocStore.name}</span>
+                      </div>
+                      {(adhocStore.address || adhocStore.town) && (
+                        <div className="svc-booking-row">
+                          <span className="svc-booking-label">Location</span>
+                          <span className="svc-booking-val">{adhocStore.address ?? adhocStore.town}</span>
+                        </div>
+                      )}
+                      {adhocStore.code && (
+                        <div className="svc-booking-row">
+                          <span className="svc-booking-label">Code</span>
+                          <span className="svc-booking-val">{adhocStore.code}</span>
+                        </div>
+                      )}
+                      <button type="button" className="svc-lookup-clear" style={{ marginTop: 6 }}
+                        onClick={() => { setAdhocStore(null); setAdhocQuery(''); setAdhocRef(''); }}>
+                        Change Store
+                      </button>
+                    </div>
+                  )
+                  : (
+                    <>
+                      <input
+                        id="svc-adhoc-store"
+                        type="text"
+                        className="svc-input"
+                        placeholder="Type store name or town…"
+                        value={adhocQuery}
+                        autoComplete="off"
+                        onChange={e => { setAdhocQuery(e.target.value); searchStores(e.target.value); }}
+                      />
+                      {adhocSearching && <p className="svc-hint">Searching…</p>}
+                      {!adhocSearching && adhocResults.length > 0 && (
+                        <ul className="svc-store-list">
+                          {adhocResults.map(s => (
+                            <li key={s.id} className="svc-store-item"
+                              onClick={() => selectAdhocStore(s)}>
+                              <span className="svc-store-name">{s.name}</span>
+                              {s.town && <span className="svc-store-meta">{s.town}</span>}
+                              {s.code && <span className="svc-store-meta">{s.code}</span>}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {!adhocSearching && adhocQuery.length >= 2 && adhocResults.length === 0 && (
+                        <p className="svc-hint">No stores found for "{adhocQuery}"</p>
+                      )}
+                    </>
+                  )
+                }
+              </div>
+
+              <div className="svc-row-2">
+                <div className="svc-field">
+                  <label className="svc-label" htmlFor="svc-adhoc-date">Visit Date <span className="svc-req">*</span></label>
+                  <input id="svc-adhoc-date" type="date" className="svc-input svc-input-sm"
+                    value={adhocDate} onChange={e => setAdhocDate(e.target.value)} required />
+                </div>
+                <div className="svc-field">
+                  <label className="svc-label">Purpose <span className="svc-req">*</span></label>
+                  <select className="svc-input" value={adhocPurpose} onChange={e => setAdhocPurpose(e.target.value)} required>
+                    <option value="">— Select purpose —</option>
+                    {ADHOC_PURPOSES.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                </div>
+              </div>
+            </>
+          )}
+
+          {(visitMode === 'booked' ? !!booking : (!!adhocStore && !!adhocPurpose && !!adhocDate)) && (
+            <>
+              {/* Booking card — booked mode only (adhoc already shows store card above) */}
+              {visitMode === 'booked' && booking && (
+                <div className="svc-booking-card">
+                  <div className="svc-booking-row"><span className="svc-booking-label">Store</span><span className="svc-booking-val">{booking.store_name}</span></div>
+                  {booking.store_address && <div className="svc-booking-row"><span className="svc-booking-label">Address</span><span className="svc-booking-val">{booking.store_address}</span></div>}
+                  <div className="svc-booking-row"><span className="svc-booking-label">Date</span><span className="svc-booking-val">{booking.visit_date}</span></div>
+                  <div className="svc-booking-row"><span className="svc-booking-label">Purpose</span><span className="svc-booking-val">{booking.purpose}</span></div>
+                  {booking.tasks.length > 0 && <div className="svc-booking-row"><span className="svc-booking-label">Tasks</span><span className="svc-booking-val">{booking.tasks.join(', ')}</span></div>}
+                </div>
+              )}
 
               <div className="svc-field">
                 <label className="svc-label" htmlFor="svc-checkin">Check-in Time <span className="svc-req">*</span></label>
@@ -598,6 +785,41 @@ const css = `
   .svc-input:focus { outline:none; border-color:var(--yellow); box-shadow:0 0 0 3px rgba(245,196,0,0.18); }
   .svc-input-sm { max-width:160px; }
   .svc-textarea { min-height:72px; resize:vertical; }
+
+  /* Mode toggle */
+  .svc-mode-toggle { display:flex; gap:4px; background:var(--sunken); border-radius:10px; padding:4px; }
+  .svc-mode-btn {
+    flex:1; padding:10px 16px; min-height:40px;
+    background:transparent; border:0; color:var(--muted);
+    border-radius:8px;
+    font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:12px;
+    text-transform:uppercase; letter-spacing:0.08em; cursor:pointer;
+    transition:background 0.12s,color 0.12s;
+  }
+  .svc-mode-btn:hover { background:var(--elev); color:var(--text); }
+  .svc-mode-btn.is-active { background:var(--yellow); color:var(--sunken); font-weight:900; }
+  .svc-mode-btn:focus-visible { outline:3px solid var(--focus); outline-offset:2px; }
+
+  /* Store search hint */
+  .svc-hint { margin:4px 0 0; font-size:12px; color:var(--dim); }
+
+  /* Store search results */
+  .svc-store-list {
+    list-style:none; margin:4px 0 0; padding:0;
+    background:var(--elev); border:1px solid var(--border);
+    border-radius:8px; overflow:hidden; position:absolute;
+    left:0; right:0; z-index:20; box-shadow:0 4px 16px rgba(0,0,0,0.3);
+  }
+  .svc-store-item {
+    display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;
+    padding:10px 14px; cursor:pointer;
+    border-bottom:1px solid var(--border-s);
+    transition:background 0.1s;
+  }
+  .svc-store-item:last-child { border-bottom:0; }
+  .svc-store-item:hover { background:var(--section-bg); }
+  .svc-store-name { font-size:13px; color:var(--text); font-weight:500; }
+  .svc-store-meta { font-family:'Barlow Condensed',sans-serif; font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:0.06em; }
 
   /* Lookup row */
   .svc-lookup-row { display:flex; gap:8px; align-items:center; }
