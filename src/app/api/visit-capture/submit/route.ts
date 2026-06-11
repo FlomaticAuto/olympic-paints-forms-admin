@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
 import { corsHeaders } from '@/lib/cors';
-import type { StoreVisitCapture } from '@/lib/supabase/types';
 
 // POST /api/visit-capture/submit
 export async function POST(req: NextRequest) {
@@ -20,10 +19,10 @@ export async function POST(req: NextRequest) {
 
   const db = createServerClient();
 
-  const { data, error } = await db
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (db as any)
     .from('store_visit_captures')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .insert(body as any)
+    .insert(body)
     .select('id,submitted_at')
     .single();
 
