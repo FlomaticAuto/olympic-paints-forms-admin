@@ -32,7 +32,8 @@ export async function POST(req: NextRequest) {
   }
 
   // Mark the booking as completed
-  await db
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (db as any)
     .from('store_visit_bookings')
     .update({ booking_status: 'Completed' })
     .eq('report_ref', body.report_ref as string)
