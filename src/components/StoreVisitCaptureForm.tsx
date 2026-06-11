@@ -17,7 +17,10 @@ interface Booking {
   purpose: string;
   tasks: string[];
   merchandiser: string;
+  booked_by: string | null;
 }
+
+const REPS = ['Aboo', 'Amit', 'Bhadresh', 'Byron', 'Nikhil', 'Quintus'];
 
 interface StoreResult {
   id: string;
@@ -198,10 +201,13 @@ export default function StoreVisitCaptureForm() {
   function selectBooking(ref: string) {
     setSvbRef(ref);
     setLookupErr(null);
-    if (!ref) { setBooking(null); return; }
+    if (!ref) { setBooking(null); setRepName(''); return; }
     const found = openBookings.find(b => b.report_ref === ref) ?? null;
     setBooking(found);
-    if (found) setCheckinTime(nowLocal());
+    if (found) {
+      setCheckinTime(nowLocal());
+      setRepName(found.booked_by ?? '');
+    }
   }
 
   // ── Ad-hoc: select store from search results ──────────────────────────────
@@ -217,7 +223,7 @@ export default function StoreVisitCaptureForm() {
   function switchMode(mode: 'booked' | 'adhoc') {
     setVisitMode(mode);
     // clear booked
-    setBooking(null); setSvbRef(''); setLookupErr(null);
+    setBooking(null); setSvbRef(''); setLookupErr(null); setRepName('');
     // clear adhoc
     setAdhocStore(null); setAdhocQuery(''); setAdhocResults([]);
     setAdhocPurpose(''); setAdhocDate(todayLocal()); setAdhocRef('');
@@ -526,7 +532,24 @@ export default function StoreVisitCaptureForm() {
               </div>
               <div className="svc-field">
                 <label className="svc-label" htmlFor="svc-rep">Rep who services this store</label>
-                <input id="svc-rep" type="text" className="svc-input" placeholder="Rep name" value={repName} onChange={e => setRepName(e.target.value)} />
+                {visitMode === 'booked'
+                  ? <input
+                      id="svc-rep"
+                      type="text"
+                      className="svc-input svc-input-readonly"
+                      value={repName}
+                      readOnly
+                    />
+                  : <select
+                      id="svc-rep"
+                      className="svc-input"
+                      value={repName}
+                      onChange={e => setRepName(e.target.value)}
+                    >
+                      <option value="">— Select rep —</option>
+                      {REPS.map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                }
               </div>
 
               {/* ── Section 3: Merch materials ── */}
@@ -813,6 +836,8 @@ const css = `
   }
   .svc-input:focus { outline:none; border-color:var(--yellow); box-shadow:0 0 0 3px rgba(245,196,0,0.18); }
   .svc-input-sm { max-width:160px; }
+  .svc-input-readonly { color:var(--muted); cursor:default; }
+  .svc-input-readonly:focus { border-color:var(--border); box-shadow:none; }
   .svc-textarea { min-height:72px; resize:vertical; }
 
   /* Mode toggle */

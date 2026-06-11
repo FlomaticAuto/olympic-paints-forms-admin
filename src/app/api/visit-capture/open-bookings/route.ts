@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (db as any)
     .from('store_visit_bookings')
-    .select('report_ref,store_name,store_address,visit_date,purpose,tasks,merchandiser')
+    .select('report_ref,store_name,store_address,visit_date,purpose,tasks,merchandiser,booked_by')
     .eq('booking_status', 'Logged')
     .order('visit_date', { ascending: true });
 
