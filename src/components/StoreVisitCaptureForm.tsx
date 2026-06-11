@@ -161,18 +161,15 @@ export default function StoreVisitCaptureForm() {
   // Section 4
   const [chartsInPlace, setChartsInPlace] = useState<boolean | null>(null);
 
-  // Section 5: photos
-  const [photoFiles,    setPhotoFiles]    = useState<Record<string, File | null>>(
-    Object.fromEntries(PHOTO_FIELDS.map(p => [p.key, null]))
-  );
-  const [photoPreviews, setPhotoPreviews] = useState<Record<string, string>>(
-    Object.fromEntries(PHOTO_FIELDS.map(p => [p.key, '']))
+  // Section 5: photos — each slot holds multiple images
+  const [photoPreviews, setPhotoPreviews] = useState<Record<string, string[]>>(
+    Object.fromEntries(PHOTO_FIELDS.map(p => [p.key, []]))
   );
   const [photoUploading, setPhotoUploading] = useState<Record<string, boolean>>(
     Object.fromEntries(PHOTO_FIELDS.map(p => [p.key, false]))
   );
-  const [photoUrls, setPhotoUrls] = useState<Record<string, string>>(
-    Object.fromEntries(PHOTO_FIELDS.map(p => [p.key, '']))
+  const [photoUrls, setPhotoUrls] = useState<Record<string, string[]>>(
+    Object.fromEntries(PHOTO_FIELDS.map(p => [p.key, []]))
   );
 
   // Section 6: survey
@@ -226,12 +223,11 @@ export default function StoreVisitCaptureForm() {
     setAdhocPurpose(''); setAdhocDate(todayLocal()); setAdhocRef('');
   }
 
-  // ── Photo select + immediate upload ──────────────────────────────────────
+  // ── Photo add: appends to the slot's list ────────────────────────────────
   async function handlePhoto(key: string, file: File | null) {
     if (!file) return;
     const preview = URL.createObjectURL(file);
-    setPhotoFiles(p => ({ ...p, [key]: file }));
-    setPhotoPreviews(p => ({ ...p, [key]: preview }));
+    setPhotoPreviews(p => ({ ...p, [key]: [...p[key], preview] }));
     setPhotoUploading(p => ({ ...p, [key]: true }));
     try {
       const fd = new FormData();
@@ -241,13 +237,19 @@ export default function StoreVisitCaptureForm() {
       const res = await fetch('/api/visit-capture/upload-photo', { method: 'POST', body: fd });
       const j = await res.json();
       if (res.ok && j.url) {
-        setPhotoUrls(p => ({ ...p, [key]: j.url }));
+        setPhotoUrls(p => ({ ...p, [key]: [...p[key], j.url] }));
       }
     } catch {
-      // non-fatal — URL stays empty, we can submit without it
+      // non-fatal
     } finally {
       setPhotoUploading(p => ({ ...p, [key]: false }));
     }
+  }
+
+  // ── Photo remove ──────────────────────────────────────────────────────────
+  function removePhoto(key: string, index: number) {
+    setPhotoPreviews(p => ({ ...p, [key]: p[key].filter((_, i) => i !== index) }));
+    setPhotoUrls(p => ({ ...p, [key]: p[key].filter((_, i) => i !== index) }));
   }
 
   // ── Submit ────────────────────────────────────────────────────────────────
@@ -279,7 +281,7 @@ export default function StoreVisitCaptureForm() {
 
       all_colour_charts_in_place: chartsInPlace,
 
-      ...Object.fromEntries(PHOTO_FIELDS.map(p => [p.key, photoUrls[p.key] || null])),
+      ...Object.fromEntries(PHOTO_FIELDS.map(p => [p.key, photoUrls[p.key].length ? photoUrls[p.key] : null])),
 
       spoke_to:                  spokeTo.trim() || null,
       customer_survey_completed: surveyDone,
@@ -324,9 +326,8 @@ export default function StoreVisitCaptureForm() {
             setCheckedStock(null); setCheckedFifo(null); setStockSufficient(null);
             setReplenishment(null); setRepName(''); setMerchCounts(Object.fromEntries(MERCH_ITEMS.map(m => [m.key, 0])));
             setOtherMerch(''); setChartsInPlace(null);
-            setPhotoFiles(Object.fromEntries(PHOTO_FIELDS.map(p => [p.key, null])));
-            setPhotoPreviews(Object.fromEntries(PHOTO_FIELDS.map(p => [p.key, ''])));
-            setPhotoUrls(Object.fromEntries(PHOTO_FIELDS.map(p => [p.key, ''])));
+            setPhotoPreviews(Object.fromEntries(PHOTO_FIELDS.map(p => [p.key, []])));
+            setPhotoUrls(Object.fromEntries(PHOTO_FIELDS.map(p => [p.key, []])));
             setSpokeTo(''); setSurveyDone(null);
             setRatings(Object.fromEntries(SURVEY_ROWS.map(r => [r.key, ''])));
             setCustComments(''); setFeedbackReason(''); setStoreCondition('');
@@ -555,15 +556,15 @@ export default function StoreVisitCaptureForm() {
 
               {/* ── Section 5: Photos ── */}
               <div className="svc-section-label">Photos</div>
-              <div className="svc-photo-grid">
+              <div className="svc-photo-sections">
                 {PHOTO_FIELDS.map(f => (
-                  <PhotoUpload
+                  <PhotoSlot
                     key={f.key}
                     label={f.label}
-                    preview={photoPreviews[f.key]}
+                    previews={photoPreviews[f.key]}
                     uploading={photoUploading[f.key]}
-                    uploaded={!!photoUrls[f.key]}
-                    onChange={file => handlePhoto(f.key, file)}
+                    onAdd={file => handlePhoto(f.key, file)}
+                    onRemove={index => removePhoto(f.key, index)}
                   />
                 ))}
               </div>
@@ -663,29 +664,57 @@ function YesNo({ label, value, onChange }: { label: string; value: boolean | nul
   );
 }
 
-function PhotoUpload({ label, preview, uploading, uploaded, onChange }: {
-  label: string; preview: string; uploading: boolean; uploaded: boolean;
-  onChange: (f: File | null) => void;
+function PhotoSlot({ label, previews, uploading, onAdd, onRemove }: {
+  label: string;
+  previews: string[];
+  uploading: boolean;
+  onAdd: (f: File | null) => void;
+  onRemove: (index: number) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   function handleChange(e: ChangeEvent<HTMLInputElement>) {
-    onChange(e.target.files?.[0] ?? null);
+    const files = e.target.files;
+    if (!files) return;
+    // allow picking multiple at once
+    for (let i = 0; i < files.length; i++) onAdd(files[i]);
+    e.target.value = '';
   }
   return (
-    <div className="svc-photo-cell" onClick={() => inputRef.current?.click()}>
-      {preview
-        ? <img src={preview} alt={label} className="svc-photo-preview" />
-        : <div className="svc-photo-placeholder">
-            <span className="svc-photo-icon">📷</span>
-            <span className="svc-photo-add">Tap to add</span>
-          </div>
-      }
-      <div className="svc-photo-label-row">
-        <span className="svc-photo-label">{label}</span>
-        {uploading && <span className="svc-photo-status svc-uploading">↑</span>}
-        {!uploading && uploaded && <span className="svc-photo-status svc-uploaded">✓</span>}
+    <div className="svc-photo-slot">
+      <div className="svc-photo-slot-header">
+        <span className="svc-photo-slot-label">{label}</span>
+        {previews.length > 0 && (
+          <span className="svc-photo-slot-count">{previews.length} photo{previews.length !== 1 ? 's' : ''}</span>
+        )}
       </div>
-      <input ref={inputRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleChange} />
+      <div className="svc-photo-row">
+        {previews.map((src, i) => (
+          <div key={i} className="svc-photo-thumb">
+            <img src={src} alt={`${label} ${i + 1}`} className="svc-photo-thumb-img" />
+            <button
+              type="button"
+              className="svc-photo-remove"
+              onClick={() => onRemove(i)}
+              aria-label="Remove photo"
+            >×</button>
+          </div>
+        ))}
+        <div className="svc-photo-add-tile" onClick={() => inputRef.current?.click()}>
+          {uploading
+            ? <span className="svc-photo-status svc-uploading" style={{ fontSize: 20 }}>↑</span>
+            : <><span className="svc-photo-icon">📷</span><span className="svc-photo-add-lbl">Add</span></>
+          }
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            capture="environment"
+            style={{ display: 'none' }}
+            onChange={handleChange}
+          />
+        </div>
+      </div>
     </div>
   );
 }
@@ -878,24 +907,34 @@ const css = `
     color:var(--yellow);
   }
 
-  /* Photo grid */
-  .svc-photo-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
-  .svc-photo-cell {
-    cursor:pointer; border-radius:10px; overflow:hidden;
-    border:2px dashed var(--border); background:var(--sunken);
-    display:flex; flex-direction:column; min-height:120px;
+  /* Photo slots */
+  .svc-photo-sections { display:flex; flex-direction:column; gap:12px; }
+  .svc-photo-slot { background:var(--sunken); border:1px solid var(--border-s); border-radius:10px; padding:10px 12px; }
+  .svc-photo-slot-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+  .svc-photo-slot-label { font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); }
+  .svc-photo-slot-count { font-family:'Barlow Condensed',sans-serif; font-size:10px; color:var(--yellow); font-weight:700; }
+  .svc-photo-row { display:flex; flex-wrap:wrap; gap:8px; align-items:flex-start; }
+  .svc-photo-thumb { position:relative; width:80px; height:80px; border-radius:8px; overflow:hidden; flex-shrink:0; }
+  .svc-photo-thumb-img { width:100%; height:100%; object-fit:cover; display:block; }
+  .svc-photo-remove {
+    position:absolute; top:3px; right:3px;
+    width:20px; height:20px; border-radius:50%;
+    background:rgba(0,0,0,0.65); color:#fff; border:0;
+    font-size:14px; line-height:1; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    padding:0;
+  }
+  .svc-photo-remove:hover { background:rgba(232,96,96,0.85); }
+  .svc-photo-add-tile {
+    width:80px; height:80px; border-radius:8px;
+    border:2px dashed var(--border); background:var(--elev);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+    cursor:pointer; flex-shrink:0;
     transition:border-color 0.12s;
   }
-  .svc-photo-cell:hover { border-color:var(--yellow); }
-  .svc-photo-preview { width:100%; aspect-ratio:4/3; object-fit:cover; display:block; }
-  .svc-photo-placeholder {
-    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
-    padding:12px;
-  }
-  .svc-photo-icon { font-size:28px; }
-  .svc-photo-add { font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:0.06em; font-family:'Barlow Condensed',sans-serif; font-weight:700; }
-  .svc-photo-label-row { display:flex; align-items:center; justify-content:space-between; padding:6px 8px; background:var(--elev); }
-  .svc-photo-label { font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:10px; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted); }
+  .svc-photo-add-tile:hover { border-color:var(--yellow); }
+  .svc-photo-icon { font-size:22px; }
+  .svc-photo-add-lbl { font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:10px; text-transform:uppercase; letter-spacing:0.06em; color:var(--dim); }
   .svc-photo-status { font-size:13px; font-weight:700; }
   .svc-uploading { color:var(--yellow); animation:spin 1s linear infinite; }
   .svc-uploaded { color:var(--success-fg); }
@@ -962,7 +1001,8 @@ const css = `
     .svc-body { padding:14px 12px 32px; border-radius:0; }
     .svc-yn-grid { grid-template-columns:1fr; }
     .svc-row-2 { grid-template-columns:1fr; }
-    .svc-photo-grid { grid-template-columns:repeat(2,1fr); }
+    .svc-photo-thumb { width:70px; height:70px; }
+    .svc-photo-add-tile { width:70px; height:70px; }
     .svc-ratings-header { grid-template-columns:1fr repeat(3,56px); }
     .svc-rating-row { grid-template-columns:1fr repeat(3,56px); }
     .svc-rating-col-head { font-size:8px; }
