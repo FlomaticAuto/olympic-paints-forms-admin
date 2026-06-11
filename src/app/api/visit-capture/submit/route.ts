@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
 import { corsHeaders } from '@/lib/cors';
+import type { StoreVisitCapture } from '@/lib/supabase/types';
 
 // POST /api/visit-capture/submit
 export async function POST(req: NextRequest) {
@@ -21,7 +22,7 @@ export async function POST(req: NextRequest) {
 
   const { data, error } = await db
     .from('store_visit_captures')
-    .insert(body as never)
+    .insert(body as unknown as Omit<StoreVisitCapture, 'id' | 'submitted_at'>)
     .select('id,submitted_at')
     .single();
 
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
   // Mark the booking as completed
   await db
     .from('store_visit_bookings')
-    .update({ booking_status: 'Completed' } as never)
+    .update({ booking_status: 'Completed' })
     .eq('report_ref', body.report_ref as string)
     .eq('booking_status', 'Logged');
 

@@ -11,8 +11,18 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Missing ref' }, { status: 400, headers: corsHeaders(origin) });
   }
 
+  interface BookingRow {
+    report_ref: string;
+    store_name: string;
+    store_address: string | null;
+    visit_date: string;
+    purpose: string | null;
+    tasks: string[] | null;
+    merchandiser: string;
+  }
+
   const db = createServerClient();
-  const { data, error } = await db
+  const { data: raw, error } = await db
     .from('store_visit_bookings')
     .select('report_ref,store_name,store_address,visit_date,purpose,tasks,merchandiser')
     .eq('report_ref', ref)
@@ -22,10 +32,11 @@ export async function GET(req: NextRequest) {
     console.error('[visit-capture/lookup]', error);
     return NextResponse.json({ error: 'Lookup failed' }, { status: 500, headers: corsHeaders(origin) });
   }
-  if (!data) {
+  if (!raw) {
     return NextResponse.json({ error: 'Booking not found' }, { status: 404, headers: corsHeaders(origin) });
   }
 
+  const data = raw as unknown as BookingRow;
   const booking = {
     store_name:    data.store_name,
     store_address: data.store_address ?? null,

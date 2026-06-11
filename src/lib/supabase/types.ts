@@ -97,6 +97,47 @@ export interface Store {
   area:    string | null;
 }
 
+export interface StoreVisitCapture {
+  id:                         string;
+  report_ref:                 string;
+  store_name:                 string;
+  store_address:              string | null;
+  visit_date:                 string;
+  merchandiser:               string;
+  checked_stock_location:     boolean | null;
+  checked_fifo:               boolean | null;
+  stock_on_floor_sufficient:  boolean | null;
+  replenishment_order_placed: boolean | null;
+  rep_servicing_store:        string | null;
+  floor_vinyls:               number | null;
+  vertical_colour_chart:      number | null;
+  horizontal_colour_chart:    number | null;
+  shelf_wobblers:             number | null;
+  big_colour_chart:           number | null;
+  pricing_boards:             number | null;
+  other_merch_items:          string | null;
+  all_colour_charts_in_place: boolean | null;
+  photo_store_front:          string | null;
+  photo_stock_before:         string | null;
+  photo_stock_after:          string | null;
+  photo_chart_before:         string | null;
+  photo_chart_after:          string | null;
+  spoke_to:                   string | null;
+  customer_survey_completed:  boolean | null;
+  rating_service_delivery:    string | null;
+  rating_communication:       string | null;
+  rating_rep_service:         string | null;
+  rating_paperwork:           string | null;
+  rating_logistics:           string | null;
+  customer_comments:          string | null;
+  customer_feedback_reason:   string | null;
+  overall_store_condition:    string | null;
+  checked_in_at:              string | null;
+  checked_out_at:             string | null;
+  gazebo_day_feedback:        string | null;
+  submitted_at:               string;
+}
+
 // Minimal Database type for the Supabase generic client.
 // Extend if you add more tables.
 export interface Database {
@@ -126,6 +167,11 @@ export interface Database {
         Row:    FormRespondent;
         Insert: Omit<FormRespondent, 'id' | 'created_at'> & { id?: string; created_at?: string };
         Update: Pick<FormRespondent, 'submitted_at'>;
+      };
+      store_visit_captures: {
+        Row:    StoreVisitCapture;
+        Insert: Omit<StoreVisitCapture, 'id' | 'submitted_at'> & { id?: string; submitted_at?: string };
+        Update: Partial<Omit<StoreVisitCapture, 'id'>>;
       };
     };
     Functions: {
