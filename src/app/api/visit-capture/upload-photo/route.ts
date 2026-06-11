@@ -95,16 +95,16 @@ async function r2Put(endpoint: string, contentType: string, body: ArrayBuffer, a
 }
 
 async function sha256hex(data: ArrayBuffer | Uint8Array): Promise<string> {
-  const src: ArrayBuffer = data instanceof Uint8Array
-    ? data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)
+  const src = data instanceof Uint8Array
+    ? data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer
     : data;
   const buf = await crypto.subtle.digest('SHA-256', src);
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 async function hmacRaw(key: ArrayBuffer | Uint8Array, data: string): Promise<ArrayBuffer> {
-  const rawKey: ArrayBuffer = key instanceof Uint8Array
-    ? key.buffer.slice(key.byteOffset, key.byteOffset + key.byteLength)
+  const rawKey = key instanceof Uint8Array
+    ? key.buffer.slice(key.byteOffset, key.byteOffset + key.byteLength) as ArrayBuffer
     : key;
   const k = await crypto.subtle.importKey('raw', rawKey, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   return crypto.subtle.sign('HMAC', k, new TextEncoder().encode(data));
