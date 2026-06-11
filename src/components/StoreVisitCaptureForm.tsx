@@ -309,6 +309,9 @@ export default function StoreVisitCaptureForm() {
       });
       const j = await res.json();
       if (!res.ok) { setError(j.error ?? 'Submission failed.'); setBusy(false); return; }
+      if (visitMode === 'booked' && booking) {
+        setOpenBookings(prev => prev.filter(b => b.report_ref !== booking.report_ref));
+      }
       setDone(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Network error');
