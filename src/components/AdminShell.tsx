@@ -11,7 +11,19 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         </div>
         <span className="admin-topbar-title">Olympic Paints</span>
         <span className="admin-topbar-badge">Forms Admin</span>
-        <div style={{ marginLeft: 'auto' }}>
+        <nav style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '18px' }}>
+          <Link
+            href="/admin/cockpit"
+            style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-secondary)', textDecoration: 'none' }}
+          >
+            Cockpit
+          </Link>
+          <Link
+            href="/admin/forms"
+            style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-secondary)', textDecoration: 'none' }}
+          >
+            Forms
+          </Link>
           <Link
             href="/admin/logout"
             style={{
@@ -23,7 +35,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           >
             Sign out
           </Link>
-        </div>
+        </nav>
       </header>
       <main className="admin-main">{children}</main>
     </div>
