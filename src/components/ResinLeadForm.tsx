@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef, useCallback, ChangeEvent } from 'react';
-import { RESIN_PRODUCTS, priceFor, type Distance } from '@/lib/resinProducts';
 
+type Distance = 'Local' | 'Long Distance';
 type Theme = 'theme-dark' | 'theme-light' | 'theme-navy';
 const THEME_KEY = 'rl-theme';
 const REP_KEY   = 'rl-rep';
@@ -32,7 +32,34 @@ interface Lead {
   notes: string | null;
 }
 
-interface LineItem { code: string; qty: string; }
+interface Product {
+  id: string;
+  code: string | null;
+  name: string;
+  local_price: number | null;
+  long_price: number | null;
+  category: string | null;
+}
+interface Supplier { id: string; name: string; }
+
+interface LineItem {
+  product_id: string;
+  code: string;
+  name: string;
+  our_price: string;
+  est_qty: string;
+  order_every: string;
+  order_unit: 'Weeks' | 'Months';
+  supplier: string;
+  supplier_price: string;
+  notes: string;
+}
+function blankItem(): LineItem {
+  return {
+    product_id: '', code: '', name: '', our_price: '', est_qty: '',
+    order_every: '', order_unit: 'Months', supplier: '', supplier_price: '', notes: '',
+  };
+}
 
 const BLANK_LEAD = {
   company: '', contact_person: '', phone: '', mobile: '', email: '',
@@ -62,6 +89,14 @@ export default function ResinLeadForm() {
       navigator.serviceWorker.register('/resin-sw.js', { scope: '/resin-leads' }).catch(() => {});
     }
   }, []);
+
+  // Load the product catalogue + supplier database.
+  useEffect(() => {
+    fetch('/api/resin-leads/products').then(r => r.json())
+      .then(d => setCatalogue(Array.isArray(d) ? d : [])).catch(() => {});
+    fetch('/api/resin-leads/suppliers').then(r => r.json())
+      .then(d => setSuppliers(Array.isArray(d) ? d : [])).catch(() => {});
+  }, []);
   const setTheme = (t: Theme) => { setThemeState(t); window.localStorage.setItem(THEME_KEY, t); };
   const setRep   = (r: string) => { setRepState(r); window.localStorage.setItem(REP_KEY, r); };
 
@@ -78,7 +113,14 @@ export default function ResinLeadForm() {
   const [outcome, setOutcome] = useState('');
   const [nextFollowUp, setNextFollowUp] = useState('');
   const [visitNotes, setVisitNotes] = useState('');
-  const [items, setItems] = useState<LineItem[]>([{ code: '', qty: '' }]);
+  const [items, setItems] = useState<LineItem[]>([blankItem()]);
+
+  // Product catalogue + supplier database (loaded from Supabase)
+  const [catalogue, setCatalogue] = useState<Product[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [showAddProduct, setShowAddProduct] = useState(false);
+  const [np, setNp] = useState({ name: '', code: '', category: 'Solvent/Thinner', local_price: '', long_price: '' });
+  const [savingProduct, setSavingProduct] = useState(false);
 
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
@@ -116,7 +158,7 @@ export default function ResinLeadForm() {
     setOutcome('');
     setNextFollowUp('');
     setVisitNotes('');
-    setItems([{ code: '', qty: '' }]);
+    setItems([blankItem()]);
     setPhotoPreviews([]); setPhotoUrls([]);
     setError(null);
   }
@@ -127,16 +169,51 @@ export default function ResinLeadForm() {
 
   // ── Line items ────────────────────────────────────────────────────────────
   const distance: Distance = lead?.distance ?? 'Local';
+  function catalogPrice(p: Product | undefined, dist: Distance): number | null {
+    if (!p) return null;
+    return dist === 'Long Distance' ? p.long_price : p.local_price;
+  }
   function updateItem(i: number, patch: Partial<LineItem>) {
     setItems(prev => prev.map((it, idx) => idx === i ? { ...it, ...patch } : it));
   }
-  function addItem() { setItems(prev => [...prev, { code: '', qty: '' }]); }
-  function removeItem(i: number) { setItems(prev => prev.filter((_, idx) => idx !== i)); }
-  function lineTotal(it: LineItem): number {
-    const qty = Number(it.qty) || 0;
-    return it.code ? priceFor(it.code, distance) * qty : 0;
+  function selectProduct(i: number, product_id: string) {
+    const p = catalogue.find(x => x.id === product_id);
+    const auto = catalogPrice(p, distance);
+    updateItem(i, {
+      product_id,
+      name: p?.name ?? '',
+      code: p?.code ?? '',
+      our_price: auto != null ? String(auto) : '',
+    });
   }
-  const grandTotal = items.reduce((s, it) => s + lineTotal(it), 0);
+  function addItem() { setItems(prev => [...prev, blankItem()]); }
+  function removeItem(i: number) { setItems(prev => prev.filter((_, idx) => idx !== i)); }
+  function lineEstValue(it: LineItem): number {
+    return (Number(it.our_price) || 0) * (Number(it.est_qty) || 0);
+  }
+  const grandTotal = items.reduce((s, it) => s + lineEstValue(it), 0);
+
+  async function saveNewProduct() {
+    if (!np.name.trim()) return;
+    setSavingProduct(true);
+    try {
+      const res = await fetch('/api/resin-leads/products', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          name: np.name.trim(), code: np.code.trim() || null, category: np.category,
+          local_price: np.local_price || null, long_price: np.long_price || null,
+        }),
+      });
+      const p = await res.json();
+      if (res.ok && p.id) {
+        setCatalogue(prev => (prev.some(x => x.id === p.id) ? prev : [...prev, p]));
+        setNp({ name: '', code: '', category: 'Solvent/Thinner', local_price: '', long_price: '' });
+        setShowAddProduct(false);
+      }
+    } catch { /* non-fatal */ }
+    finally { setSavingProduct(false); }
+  }
 
   // ── Photos ────────────────────────────────────────────────────────────────
   async function handlePhoto(e: ChangeEvent<HTMLInputElement>) {
@@ -191,8 +268,19 @@ export default function ResinLeadForm() {
     if (!visitDate) { setError('Visit date is required.'); return; }
     setBusy(true); setError(null);
     const products = items
-      .filter(it => it.code && Number(it.qty) > 0)
-      .map(it => ({ code: it.code, qty: Number(it.qty) }));
+      .filter(it => it.product_id || it.name.trim())
+      .map(it => ({
+        product_id: it.product_id || null,
+        code: it.code || null,
+        name: it.name,
+        our_price: it.our_price !== '' ? Number(it.our_price) : null,
+        est_qty: it.est_qty !== '' ? Number(it.est_qty) : null,
+        order_every: it.order_every !== '' ? Number(it.order_every) : null,
+        order_unit: it.order_unit || null,
+        current_supplier: it.supplier.trim() || null,
+        current_supplier_price: it.supplier_price !== '' ? Number(it.supplier_price) : null,
+        notes: it.notes.trim() || null,
+      }));
     try {
       const res = await fetch('/api/resin-leads/visit', {
         method: 'POST',
@@ -216,7 +304,7 @@ export default function ResinLeadForm() {
     setDoneRef(null); setBusy(false); setError(null);
     setCap({ ...BLANK_LEAD });
     clearLead(); setVisitDate(todayLocal()); setOutcome(''); setNextFollowUp('');
-    setVisitNotes(''); setItems([{ code: '', qty: '' }]);
+    setVisitNotes(''); setItems([blankItem()]); setShowAddProduct(false);
     setPhotoPreviews([]); setPhotoUrls([]);
   }
 
@@ -445,38 +533,136 @@ export default function ResinLeadForm() {
                   </div>
 
                   <div className="rl-section-title">
-                    Products Discussed
-                    <span className="rl-section-note">Priced {distance}</span>
+                    Products of Interest
+                    <span className="rl-section-note">Prices auto-fill {distance} · editable</span>
                   </div>
                   <div className="rl-items">
-                    {items.map((it, i) => {
-                      const unit = it.code ? priceFor(it.code, distance) : 0;
-                      return (
-                        <div key={i} className="rl-item-row">
-                          <select className="rl-input rl-item-product" value={it.code}
-                            onChange={e => updateItem(i, { code: e.target.value })}>
-                            <option value="">— Product —</option>
-                            {RESIN_PRODUCTS.map(p => (
-                              <option key={p.code} value={p.code}>{p.code} · {p.name}</option>
+                    {items.map((it, i) => (
+                      <div key={i} className="rl-item-card">
+                        <div className="rl-item-card-head">
+                          <select className="rl-input rl-item-product" value={it.product_id}
+                            onChange={e => selectProduct(i, e.target.value)}>
+                            <option value="">— Select product —</option>
+                            {catalogue.map(p => (
+                              <option key={p.id} value={p.id}>{p.code ? `${p.code} · ` : ''}{p.name}</option>
                             ))}
                           </select>
-                          <div className="rl-item-price">{it.code ? fmtR(unit) : '—'}</div>
-                          <input className="rl-input rl-item-qty" type="number" inputMode="decimal" min="0"
-                            placeholder="Qty" value={it.qty} onChange={e => updateItem(i, { qty: e.target.value })} />
-                          <div className="rl-item-total">{fmtR(lineTotal(it))}</div>
                           <button type="button" className="rl-item-del" onClick={() => removeItem(i)}
-                            aria-label="Remove line" disabled={items.length === 1}>×</button>
+                            aria-label="Remove product" disabled={items.length === 1}>×</button>
                         </div>
-                      );
-                    })}
+                        <div className="rl-item-grid">
+                          <div className="rl-field">
+                            <label className="rl-label">Our Price (R)</label>
+                            <input className="rl-input" type="number" inputMode="decimal" min="0"
+                              placeholder="Enter price" value={it.our_price}
+                              onChange={e => updateItem(i, { our_price: e.target.value })} />
+                          </div>
+                          <div className="rl-field">
+                            <label className="rl-label">Est. Qty (kg)</label>
+                            <input className="rl-input" type="number" inputMode="decimal" min="0"
+                              placeholder="0" value={it.est_qty}
+                              onChange={e => updateItem(i, { est_qty: e.target.value })} />
+                          </div>
+                          <div className="rl-field">
+                            <label className="rl-label">Order Every</label>
+                            <div className="rl-period">
+                              <input className="rl-input rl-period-n" type="number" inputMode="numeric" min="0"
+                                placeholder="0" value={it.order_every}
+                                onChange={e => updateItem(i, { order_every: e.target.value })} />
+                              <select className="rl-input rl-period-u" value={it.order_unit}
+                                onChange={e => updateItem(i, { order_unit: e.target.value as 'Weeks' | 'Months' })}>
+                                <option value="Weeks">Weeks</option>
+                                <option value="Months">Months</option>
+                              </select>
+                            </div>
+                          </div>
+                          <div className="rl-field">
+                            <label className="rl-label">Current Supplier</label>
+                            <input className="rl-input" list="rl-suppliers" autoComplete="off"
+                              placeholder="Who supplies them now" value={it.supplier}
+                              onChange={e => updateItem(i, { supplier: e.target.value })} />
+                          </div>
+                          <div className="rl-field">
+                            <label className="rl-label">Their Price (R)</label>
+                            <input className="rl-input" type="number" inputMode="decimal" min="0"
+                              placeholder="Supplier price" value={it.supplier_price}
+                              onChange={e => updateItem(i, { supplier_price: e.target.value })} />
+                          </div>
+                          <div className="rl-field">
+                            <label className="rl-label">Est. Value</label>
+                            <div className="rl-item-value-v">{fmtR(lineEstValue(it))}</div>
+                          </div>
+                        </div>
+                        <div className="rl-field">
+                          <label className="rl-label">Comments</label>
+                          <textarea className="rl-input rl-item-notes" rows={2}
+                            placeholder="Notes on this product…" value={it.notes}
+                            onChange={e => updateItem(i, { notes: e.target.value })} />
+                        </div>
+                      </div>
+                    ))}
                   </div>
+                  <datalist id="rl-suppliers">
+                    {suppliers.map(s => <option key={s.id} value={s.name} />)}
+                  </datalist>
                   <div className="rl-items-foot">
-                    <button type="button" className="rl-add-btn" onClick={addItem}>+ Add Product</button>
+                    <div className="rl-items-foot-btns">
+                      <button type="button" className="rl-add-btn" onClick={addItem}>+ Add product line</button>
+                      <button type="button" className="rl-add-btn rl-add-btn-alt" onClick={() => setShowAddProduct(v => !v)}>
+                        + New product to catalogue
+                      </button>
+                    </div>
                     <div className="rl-grand">
-                      <span className="rl-grand-l">Total</span>
+                      <span className="rl-grand-l">Est. Value</span>
                       <span className="rl-grand-v">{fmtR(grandTotal)}</span>
                     </div>
                   </div>
+
+                  {showAddProduct && (
+                    <div className="rl-addprod">
+                      <div className="rl-addprod-title">New Product</div>
+                      <div className="rl-row-2">
+                        <div className="rl-field">
+                          <label className="rl-label">Name <span className="rl-req">*</span></label>
+                          <input className="rl-input" value={np.name} placeholder="Product name" autoComplete="off"
+                            onChange={e => setNp(p => ({ ...p, name: e.target.value }))} />
+                        </div>
+                        <div className="rl-field">
+                          <label className="rl-label">Code</label>
+                          <input className="rl-input" value={np.code} placeholder="Optional" autoComplete="off"
+                            onChange={e => setNp(p => ({ ...p, code: e.target.value }))} />
+                        </div>
+                      </div>
+                      <div className="rl-row-3">
+                        <div className="rl-field">
+                          <label className="rl-label">Category</label>
+                          <select className="rl-input" value={np.category}
+                            onChange={e => setNp(p => ({ ...p, category: e.target.value }))}>
+                            <option>Resin</option>
+                            <option>Solvent/Thinner</option>
+                            <option>Other</option>
+                          </select>
+                        </div>
+                        <div className="rl-field">
+                          <label className="rl-label">Local Price</label>
+                          <input className="rl-input" type="number" inputMode="decimal" value={np.local_price} placeholder="Optional"
+                            onChange={e => setNp(p => ({ ...p, local_price: e.target.value }))} />
+                        </div>
+                        <div className="rl-field">
+                          <label className="rl-label">Long Dist. Price</label>
+                          <input className="rl-input" type="number" inputMode="decimal" value={np.long_price} placeholder="Optional"
+                            onChange={e => setNp(p => ({ ...p, long_price: e.target.value }))} />
+                        </div>
+                      </div>
+                      <div className="rl-addprod-btns">
+                        <button type="button" className="rl-btn rl-btn-primary rl-btn-sm"
+                          onClick={saveNewProduct} disabled={savingProduct || !np.name.trim()}>
+                          {savingProduct ? 'Saving…' : 'Save Product'}
+                        </button>
+                        <button type="button" className="rl-clear-btn" onClick={() => setShowAddProduct(false)}>Cancel</button>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="rl-section-title">Follow-up & Notes</div>
                   <div className="rl-field">
@@ -661,28 +847,38 @@ const css = `
   }
   .rl-clear-btn:hover { color:var(--text); }
 
-  /* Product line items */
-  .rl-items { display:flex; flex-direction:column; gap:8px; }
-  .rl-item-row { display:grid; grid-template-columns:1fr 78px 84px 92px 40px; gap:8px; align-items:center; }
-  .rl-item-product { min-height:44px; }
-  .rl-item-qty { min-height:44px; text-align:right; }
-  .rl-item-price, .rl-item-total { font-family:'Barlow',sans-serif; font-size:14px; text-align:right; color:var(--text); }
-  .rl-item-price { color:var(--muted); }
-  .rl-item-total { font-weight:600; }
+  /* Product interest cards */
+  .rl-items { display:flex; flex-direction:column; gap:12px; }
+  .rl-item-card { background:var(--section-bg); border:1px solid var(--border); border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:10px; }
+  .rl-item-card-head { display:flex; gap:8px; align-items:center; }
+  .rl-item-product { flex:1; min-height:46px; font-weight:600; }
   .rl-item-del {
-    width:36px; height:44px; background:var(--danger-bg); color:var(--danger-fg); border:1px solid var(--danger-bd);
+    width:40px; height:46px; flex-shrink:0; background:var(--danger-bg); color:var(--danger-fg); border:1px solid var(--danger-bd);
     border-radius:8px; font-size:20px; line-height:1; cursor:pointer;
   }
   .rl-item-del:disabled { opacity:0.3; cursor:not-allowed; }
-  .rl-items-foot { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:4px; }
+  .rl-item-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+  .rl-period { display:flex; gap:6px; }
+  .rl-period-n { width:66px; text-align:right; }
+  .rl-period-u { flex:1; }
+  .rl-item-value-v { font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:18px; color:var(--gold); padding-top:9px; }
+  .rl-item-notes { min-height:52px; resize:vertical; line-height:1.45; padding-top:9px; }
+  .rl-items-foot { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:2px; flex-wrap:wrap; }
+  .rl-items-foot-btns { display:flex; gap:8px; flex-wrap:wrap; }
   .rl-add-btn {
-    padding:9px 16px; min-height:42px; background:transparent; color:var(--gold); border:1px dashed var(--border);
-    border-radius:8px; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:12px; text-transform:uppercase; letter-spacing:0.06em; cursor:pointer;
+    padding:9px 14px; min-height:42px; background:transparent; color:var(--gold); border:1px dashed var(--border);
+    border-radius:8px; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:12px; text-transform:uppercase; letter-spacing:0.05em; cursor:pointer;
   }
   .rl-add-btn:hover { border-color:var(--gold); }
+  .rl-add-btn-alt { color:var(--muted); }
+  .rl-add-btn-alt:hover { color:var(--text); }
   .rl-grand { display:flex; align-items:baseline; gap:10px; }
   .rl-grand-l { font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted); }
   .rl-grand-v { font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:22px; color:var(--gold); }
+  .rl-addprod { background:var(--info-bg); border:1px solid var(--info-bd); border-radius:10px; padding:14px; display:flex; flex-direction:column; gap:10px; }
+  .rl-addprod-title { font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:14px; text-transform:uppercase; letter-spacing:0.04em; color:var(--text); }
+  .rl-addprod-btns { display:flex; gap:10px; align-items:center; }
+  .rl-btn-sm { padding:9px 18px; min-height:44px; font-size:14px; }
 
   /* Photos */
   .rl-photo-row { display:flex; flex-wrap:wrap; gap:10px; }
@@ -736,8 +932,7 @@ const css = `
     .rl-input-sm { max-width:none; }
     .rl-row-2, .rl-row-3 { grid-template-columns:1fr; }
     .rl-lead-grid { grid-template-columns:1fr; }
-    .rl-item-row { grid-template-columns:1fr 68px 1fr 36px; }
-    .rl-item-product { grid-column:1 / -1; }
+    .rl-item-grid { grid-template-columns:1fr 1fr; }
     .rl-mode-toggle { margin-left:0; width:100%; }
     .rl-mode-btn { flex:1; padding:12px 8px; }
     input, select, textarea, .rl-btn { font-size:16px; }
