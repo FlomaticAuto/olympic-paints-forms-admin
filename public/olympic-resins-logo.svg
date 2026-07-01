@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 470" width="460" height="470" role="img" aria-label="Olympic Resins">
+  <!-- Placeholder reproduction of the Olympic Resins brand mark.
+       Gold disc + stacked wordmark. Swap for the supplied master artwork when available. -->
+  <circle cx="230" cy="150" r="140" fill="#F6C324"/>
+  <g fill="#111111" font-family="'Barlow Condensed','Arial Narrow',sans-serif" font-weight="900" text-anchor="middle" letter-spacing="1">
+    <text x="230" y="378" font-size="96">OLYMPIC</text>
+    <text x="230" y="458" font-size="96">RESINS</text>
+  </g>
+  <text x="408" y="322" fill="#111111" font-family="'Barlow Condensed','Arial Narrow',sans-serif" font-weight="700" font-size="26">™</text>
+</svg>

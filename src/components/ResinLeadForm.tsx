@@ -1,0 +1,731 @@
+'use client';
+import { useState, useEffect, useRef, useCallback, ChangeEvent } from 'react';
+import { RESIN_PRODUCTS, priceFor, type Distance } from '@/lib/resinProducts';
+
+type Theme = 'theme-dark' | 'theme-light' | 'theme-navy';
+const THEME_KEY = 'rl-theme';
+const REP_KEY   = 'rl-rep';
+
+const REPS = ['Aboo', 'Amit', 'Bhadresh', 'Byron', 'Nikhil', 'Quintus'];
+const LEAD_SOURCES = ['Cold Call', 'Referral', 'Website', 'Trade Show / Expo', 'Existing Customer', 'Email Campaign', 'Walk-in', 'Social Media', 'Other'];
+const LEAD_STATUSES = ['New', 'Contacted', 'Qualified', 'Quoted', 'Negotiating', 'Won', 'Lost'];
+const DISTANCES: Distance[] = ['Local', 'Long Distance'];
+const PROVINCES = ['Eastern Cape', 'Free State', 'Gauteng', 'KwaZulu-Natal', 'Limpopo', 'Mpumalanga', 'North West', 'Northern Cape', 'Western Cape'];
+const VISIT_OUTCOMES = ['Introductory Meeting', 'Sample Requested', 'Quoted', 'Negotiating', 'Order Placed', 'Follow-up Required', 'Not Interested', 'Won', 'Lost'];
+
+interface Lead {
+  id: string;
+  lead_ref: string;
+  company: string;
+  contact_person: string | null;
+  phone: string | null;
+  mobile: string | null;
+  email: string | null;
+  lead_source: string | null;
+  lead_status: string | null;
+  distance: Distance;
+  street: string | null;
+  city: string | null;
+  province: string | null;
+  postal_code: string | null;
+  rep: string | null;
+  notes: string | null;
+}
+
+interface LineItem { code: string; qty: string; }
+
+const BLANK_LEAD = {
+  company: '', contact_person: '', phone: '', mobile: '', email: '',
+  lead_source: '', lead_status: 'New', distance: 'Local' as Distance,
+  street: '', city: '', province: '', postal_code: '', notes: '',
+};
+
+function todayLocal(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function fmtR(n: number): string { return 'R' + n.toFixed(2); }
+
+export default function ResinLeadForm() {
+  const [theme, setThemeState] = useState<Theme>('theme-navy');
+  const [rep, setRepState] = useState('');
+  const [mode, setMode] = useState<'capture' | 'visit'>('capture');
+
+  useEffect(() => {
+    const t = window.localStorage.getItem(THEME_KEY);
+    if (t === 'theme-dark' || t === 'theme-light' || t === 'theme-navy') setThemeState(t);
+    const r = window.localStorage.getItem(REP_KEY);
+    if (r) setRepState(r);
+  }, []);
+  const setTheme = (t: Theme) => { setThemeState(t); window.localStorage.setItem(THEME_KEY, t); };
+  const setRep   = (r: string) => { setRepState(r); window.localStorage.setItem(REP_KEY, r); };
+
+  // ── Capture mode ──────────────────────────────────────────────────────────
+  const [cap, setCap] = useState({ ...BLANK_LEAD });
+  const setC = (k: keyof typeof BLANK_LEAD, v: string) => setCap(p => ({ ...p, [k]: v }));
+
+  // ── Visit mode ────────────────────────────────────────────────────────────
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<Lead[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [lead, setLead] = useState<Lead | null>(null);
+  const [visitDate, setVisitDate] = useState(todayLocal);
+  const [outcome, setOutcome] = useState('');
+  const [nextFollowUp, setNextFollowUp] = useState('');
+  const [visitNotes, setVisitNotes] = useState('');
+  const [items, setItems] = useState<LineItem[]>([{ code: '', qty: '' }]);
+
+  const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Submit / result ───────────────────────────────────────────────────────
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [doneRef, setDoneRef] = useState<{ kind: 'lead' | 'visit'; ref: string; name: string } | null>(null);
+
+  // ── Search (debounced) ──────────────────────────────────────────────────
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchLeads = useCallback((q: string) => {
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    if (q.trim().length < 2) { setResults([]); return; }
+    searchTimeout.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await fetch(`/api/resin-leads/search?q=${encodeURIComponent(q)}`);
+        const data = await res.json();
+        setResults(Array.isArray(data) ? data : []);
+      } catch {
+        setResults([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+  }, []);
+
+  function selectLead(l: Lead) {
+    setLead(l);
+    setQuery(l.company);
+    setResults([]);
+    setOutcome('');
+    setNextFollowUp('');
+    setVisitNotes('');
+    setItems([{ code: '', qty: '' }]);
+    setPhotoPreviews([]); setPhotoUrls([]);
+    setError(null);
+  }
+
+  function clearLead() {
+    setLead(null); setQuery(''); setResults([]);
+  }
+
+  // ── Line items ────────────────────────────────────────────────────────────
+  const distance: Distance = lead?.distance ?? 'Local';
+  function updateItem(i: number, patch: Partial<LineItem>) {
+    setItems(prev => prev.map((it, idx) => idx === i ? { ...it, ...patch } : it));
+  }
+  function addItem() { setItems(prev => [...prev, { code: '', qty: '' }]); }
+  function removeItem(i: number) { setItems(prev => prev.filter((_, idx) => idx !== i)); }
+  function lineTotal(it: LineItem): number {
+    const qty = Number(it.qty) || 0;
+    return it.code ? priceFor(it.code, distance) * qty : 0;
+  }
+  const grandTotal = items.reduce((s, it) => s + lineTotal(it), 0);
+
+  // ── Photos ────────────────────────────────────────────────────────────────
+  async function handlePhoto(e: ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files || !lead) return;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const preview = URL.createObjectURL(file);
+      setPhotoPreviews(p => [...p, preview]);
+      setPhotoUploading(true);
+      try {
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('key', 'visit');
+        fd.append('ref', lead.lead_ref);
+        const res = await fetch('/api/resin-leads/upload-photo', { method: 'POST', body: fd });
+        const j = await res.json();
+        if (res.ok && j.url) setPhotoUrls(p => [...p, j.url]);
+      } catch { /* non-fatal */ }
+      finally { setPhotoUploading(false); }
+    }
+    e.target.value = '';
+  }
+  function removePhoto(i: number) {
+    setPhotoPreviews(p => p.filter((_, idx) => idx !== i));
+    setPhotoUrls(p => p.filter((_, idx) => idx !== i));
+  }
+
+  // ── Submit: create lead ─────────────────────────────────────────────────
+  async function submitLead() {
+    if (!cap.company.trim()) { setError('Company name is required.'); return; }
+    if (!rep) { setError('Select who is capturing this lead (top right).'); return; }
+    setBusy(true); setError(null);
+    try {
+      const res = await fetch('/api/resin-leads/lead', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ ...cap, rep }),
+      });
+      const j = await res.json();
+      if (!res.ok) { setError(j.error ?? 'Save failed.'); setBusy(false); return; }
+      setDoneRef({ kind: 'lead', ref: j.lead_ref, name: cap.company.trim() });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Network error'); setBusy(false);
+    }
+  }
+
+  // ── Submit: log visit ───────────────────────────────────────────────────
+  async function submitVisit() {
+    if (!lead) { setError('Select a lead first.'); return; }
+    if (!rep) { setError('Select who is logging this visit (top right).'); return; }
+    if (!visitDate) { setError('Visit date is required.'); return; }
+    setBusy(true); setError(null);
+    const products = items
+      .filter(it => it.code && Number(it.qty) > 0)
+      .map(it => ({ code: it.code, qty: Number(it.qty) }));
+    try {
+      const res = await fetch('/api/resin-leads/visit', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          lead_id: lead.id, lead_ref: lead.lead_ref, company: lead.company,
+          rep, visit_date: visitDate, distance: lead.distance,
+          outcome: outcome || null, next_follow_up: nextFollowUp || null,
+          notes: visitNotes || null, photos: photoUrls, products,
+        }),
+      });
+      const j = await res.json();
+      if (!res.ok) { setError(j.error ?? 'Save failed.'); setBusy(false); return; }
+      setDoneRef({ kind: 'visit', ref: j.visit_ref, name: lead.company });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Network error'); setBusy(false);
+    }
+  }
+
+  function resetAll() {
+    setDoneRef(null); setBusy(false); setError(null);
+    setCap({ ...BLANK_LEAD });
+    clearLead(); setVisitDate(todayLocal()); setOutcome(''); setNextFollowUp('');
+    setVisitNotes(''); setItems([{ code: '', qty: '' }]);
+    setPhotoPreviews([]); setPhotoUrls([]);
+  }
+
+  // ── Success screen ────────────────────────────────────────────────────────
+  if (doneRef) {
+    return (
+      <main className={`rl-wrap ${theme}`}>
+        <div className="rl-thanks">
+          <img src="/olympic-resins-logo.svg" alt="Olympic Resins" className="rl-thanks-logo" />
+          <div className="rl-check">✓</div>
+          <h1>{doneRef.kind === 'lead' ? 'Lead Captured' : 'Visit Logged'}</h1>
+          <p className="rl-thanks-ref">{doneRef.ref}</p>
+          <p className="rl-thanks-sub">
+            {doneRef.kind === 'lead'
+              ? <>New lead <strong>{doneRef.name}</strong> is now searchable in Log Visit.</>
+              : <>Visit for <strong>{doneRef.name}</strong> has been recorded.</>}
+          </p>
+          <div className="rl-thanks-btns">
+            <button className="rl-btn rl-btn-primary" onClick={resetAll}>
+              {doneRef.kind === 'lead' ? 'Capture Another Lead' : 'Log Another Visit'}
+            </button>
+          </div>
+        </div>
+        <style dangerouslySetInnerHTML={{ __html: css }} />
+      </main>
+    );
+  }
+
+  // ── Main ──────────────────────────────────────────────────────────────────
+  return (
+    <main className={`rl-wrap ${theme}`}>
+      <div className="rl-shell">
+
+        {/* Header */}
+        <header className="rl-header">
+          <div className="rl-brand">
+            <span className="rl-disc" aria-hidden="true" />
+            <div className="rl-brand-text">
+              <span className="rl-brand-name">Olympic Resins</span>
+              <span className="rl-brand-sub">Lead Manager</span>
+            </div>
+          </div>
+          <div className="rl-theme-toggle" role="group" aria-label="Display theme">
+            {(['theme-dark', 'theme-light', 'theme-navy'] as Theme[]).map(t => (
+              <button key={t} type="button"
+                className={`rl-theme-btn${theme === t ? ' is-active' : ''}`}
+                onClick={() => setTheme(t)}>
+                {t === 'theme-dark' ? 'Dark' : t === 'theme-light' ? 'Light' : 'Navy'}
+              </button>
+            ))}
+          </div>
+        </header>
+
+        {/* Rep + mode toggle */}
+        <div className="rl-topbar">
+          <div className="rl-rep-field">
+            <label className="rl-mini-label">Rep</label>
+            <select className="rl-input rl-input-sm" value={rep} onChange={e => setRep(e.target.value)}>
+              <option value="">— Select —</option>
+              {REPS.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </div>
+          <div className="rl-mode-toggle" role="group">
+            <button type="button" className={`rl-mode-btn${mode === 'capture' ? ' is-active' : ''}`}
+              onClick={() => { setMode('capture'); setError(null); }}>Capture Lead</button>
+            <button type="button" className={`rl-mode-btn${mode === 'visit' ? ' is-active' : ''}`}
+              onClick={() => { setMode('visit'); setError(null); }}>Log Visit</button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="rl-body">
+
+          {/* ── CAPTURE LEAD ── */}
+          {mode === 'capture' && (
+            <div className="rl-form">
+              <div className="rl-section-title">Company</div>
+              <div className="rl-field">
+                <label className="rl-label">Company Name <span className="rl-req">*</span></label>
+                <input className="rl-input" value={cap.company} onChange={e => setC('company', e.target.value)}
+                  placeholder="e.g. Acme Coatings (Pty) Ltd" autoComplete="off" />
+              </div>
+              <div className="rl-row-2">
+                <div className="rl-field">
+                  <label className="rl-label">Lead Source</label>
+                  <select className="rl-input" value={cap.lead_source} onChange={e => setC('lead_source', e.target.value)}>
+                    <option value="">— Select —</option>
+                    {LEAD_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div className="rl-field">
+                  <label className="rl-label">Lead Status</label>
+                  <select className="rl-input" value={cap.lead_status} onChange={e => setC('lead_status', e.target.value)}>
+                    {LEAD_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="rl-field">
+                <label className="rl-label">Delivery Distance <span className="rl-req">*</span></label>
+                <div className="rl-seg">
+                  {DISTANCES.map(d => (
+                    <button key={d} type="button" className={`rl-seg-btn${cap.distance === d ? ' is-active' : ''}`}
+                      onClick={() => setC('distance', d)}>{d}</button>
+                  ))}
+                </div>
+                <p className="rl-hint">Sets which price column applies when quoting this lead.</p>
+              </div>
+
+              <div className="rl-section-title">Contact</div>
+              <div className="rl-field">
+                <label className="rl-label">Contact Person</label>
+                <input className="rl-input" value={cap.contact_person} onChange={e => setC('contact_person', e.target.value)}
+                  placeholder="Full name" autoComplete="off" />
+              </div>
+              <div className="rl-row-2">
+                <div className="rl-field">
+                  <label className="rl-label">Phone</label>
+                  <input className="rl-input" type="tel" value={cap.phone} onChange={e => setC('phone', e.target.value)} autoComplete="off" />
+                </div>
+                <div className="rl-field">
+                  <label className="rl-label">Mobile</label>
+                  <input className="rl-input" type="tel" value={cap.mobile} onChange={e => setC('mobile', e.target.value)} autoComplete="off" />
+                </div>
+              </div>
+              <div className="rl-field">
+                <label className="rl-label">Email</label>
+                <input className="rl-input" type="email" value={cap.email} onChange={e => setC('email', e.target.value)} autoComplete="off" />
+              </div>
+
+              <div className="rl-section-title">Address</div>
+              <div className="rl-field">
+                <label className="rl-label">Street</label>
+                <input className="rl-input" value={cap.street} onChange={e => setC('street', e.target.value)} autoComplete="off" />
+              </div>
+              <div className="rl-row-3">
+                <div className="rl-field">
+                  <label className="rl-label">City / Town</label>
+                  <input className="rl-input" value={cap.city} onChange={e => setC('city', e.target.value)} autoComplete="off" />
+                </div>
+                <div className="rl-field">
+                  <label className="rl-label">Province</label>
+                  <select className="rl-input" value={cap.province} onChange={e => setC('province', e.target.value)}>
+                    <option value="">— Select —</option>
+                    {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                </div>
+                <div className="rl-field">
+                  <label className="rl-label">Postal Code</label>
+                  <input className="rl-input" value={cap.postal_code} onChange={e => setC('postal_code', e.target.value)} autoComplete="off" />
+                </div>
+              </div>
+
+              <div className="rl-section-title">Notes</div>
+              <div className="rl-field">
+                <textarea className="rl-input rl-textarea" value={cap.notes} onChange={e => setC('notes', e.target.value)}
+                  placeholder="Requirements, current supplier, volumes, anything worth remembering…" />
+              </div>
+
+              {error && <p className="rl-error">{error}</p>}
+              <button className="rl-btn rl-btn-primary rl-submit" onClick={submitLead} disabled={busy}>
+                {busy ? 'Saving…' : 'Save Lead'}
+              </button>
+            </div>
+          )}
+
+          {/* ── LOG VISIT ── */}
+          {mode === 'visit' && (
+            <div className="rl-form">
+              <div className="rl-section-title">Find Lead</div>
+              {!lead ? (
+                <div className="rl-field rl-search-field">
+                  <label className="rl-label">Search by company, contact, phone, city or ref</label>
+                  <input className="rl-input" value={query} autoComplete="off"
+                    placeholder="Type at least 2 characters…"
+                    onChange={e => { setQuery(e.target.value); searchLeads(e.target.value); }} />
+                  {searching && <p className="rl-hint">Searching…</p>}
+                  {!searching && results.length > 0 && (
+                    <ul className="rl-search-list">
+                      {results.map(l => (
+                        <li key={l.id} className="rl-search-item" onClick={() => selectLead(l)}>
+                          <span className="rl-search-name">{l.company}</span>
+                          {l.contact_person && <span className="rl-search-meta">{l.contact_person}</span>}
+                          {l.city && <span className="rl-search-meta">{l.city}</span>}
+                          <span className="rl-search-meta">{l.lead_ref}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {!searching && query.trim().length >= 2 && results.length === 0 && (
+                    <p className="rl-hint">No leads found. Capture it first via <strong>Capture Lead</strong>.</p>
+                  )}
+                </div>
+              ) : (
+                <div className="rl-lead-card">
+                  <div className="rl-lead-card-top">
+                    <span className="rl-lead-company">{lead.company}</span>
+                    <span className={`rl-pill rl-pill-${lead.distance === 'Local' ? 'local' : 'long'}`}>{lead.distance}</span>
+                  </div>
+                  <div className="rl-lead-grid">
+                    {lead.contact_person && <div><span className="rl-lc-l">Contact</span><span className="rl-lc-v">{lead.contact_person}</span></div>}
+                    {lead.phone   && <div><span className="rl-lc-l">Phone</span><span className="rl-lc-v">{lead.phone}</span></div>}
+                    {lead.mobile  && <div><span className="rl-lc-l">Mobile</span><span className="rl-lc-v">{lead.mobile}</span></div>}
+                    {lead.email   && <div><span className="rl-lc-l">Email</span><span className="rl-lc-v">{lead.email}</span></div>}
+                    {lead.city    && <div><span className="rl-lc-l">City</span><span className="rl-lc-v">{lead.city}{lead.province ? `, ${lead.province}` : ''}</span></div>}
+                    {lead.lead_status && <div><span className="rl-lc-l">Status</span><span className="rl-lc-v">{lead.lead_status}</span></div>}
+                    <div><span className="rl-lc-l">Ref</span><span className="rl-lc-v">{lead.lead_ref}</span></div>
+                  </div>
+                  <button type="button" className="rl-clear-btn" onClick={clearLead}>Change Lead</button>
+                </div>
+              )}
+
+              {lead && (
+                <>
+                  <div className="rl-section-title">Visit</div>
+                  <div className="rl-row-2">
+                    <div className="rl-field">
+                      <label className="rl-label">Visit Date <span className="rl-req">*</span></label>
+                      <input className="rl-input" type="date" value={visitDate} onChange={e => setVisitDate(e.target.value)} />
+                    </div>
+                    <div className="rl-field">
+                      <label className="rl-label">Outcome / Stage</label>
+                      <select className="rl-input" value={outcome} onChange={e => setOutcome(e.target.value)}>
+                        <option value="">— Select —</option>
+                        {VISIT_OUTCOMES.map(o => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="rl-section-title">
+                    Products Discussed
+                    <span className="rl-section-note">Priced {distance}</span>
+                  </div>
+                  <div className="rl-items">
+                    {items.map((it, i) => {
+                      const unit = it.code ? priceFor(it.code, distance) : 0;
+                      return (
+                        <div key={i} className="rl-item-row">
+                          <select className="rl-input rl-item-product" value={it.code}
+                            onChange={e => updateItem(i, { code: e.target.value })}>
+                            <option value="">— Product —</option>
+                            {RESIN_PRODUCTS.map(p => (
+                              <option key={p.code} value={p.code}>{p.code} · {p.name}</option>
+                            ))}
+                          </select>
+                          <div className="rl-item-price">{it.code ? fmtR(unit) : '—'}</div>
+                          <input className="rl-input rl-item-qty" type="number" inputMode="decimal" min="0"
+                            placeholder="Qty" value={it.qty} onChange={e => updateItem(i, { qty: e.target.value })} />
+                          <div className="rl-item-total">{fmtR(lineTotal(it))}</div>
+                          <button type="button" className="rl-item-del" onClick={() => removeItem(i)}
+                            aria-label="Remove line" disabled={items.length === 1}>×</button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="rl-items-foot">
+                    <button type="button" className="rl-add-btn" onClick={addItem}>+ Add Product</button>
+                    <div className="rl-grand">
+                      <span className="rl-grand-l">Total</span>
+                      <span className="rl-grand-v">{fmtR(grandTotal)}</span>
+                    </div>
+                  </div>
+
+                  <div className="rl-section-title">Follow-up & Notes</div>
+                  <div className="rl-field">
+                    <label className="rl-label">Next Follow-up Date</label>
+                    <input className="rl-input rl-input-sm" type="date" value={nextFollowUp} onChange={e => setNextFollowUp(e.target.value)} />
+                  </div>
+                  <div className="rl-field">
+                    <label className="rl-label">Visit Notes</label>
+                    <textarea className="rl-input rl-textarea" value={visitNotes} onChange={e => setVisitNotes(e.target.value)}
+                      placeholder="What was discussed, next steps, objections…" />
+                  </div>
+
+                  <div className="rl-section-title">Photos</div>
+                  <div className="rl-photo-row">
+                    {photoPreviews.map((src, i) => (
+                      <div key={i} className="rl-photo-thumb">
+                        <img src={src} alt={`Photo ${i + 1}`} />
+                        <button type="button" className="rl-photo-remove" onClick={() => removePhoto(i)} aria-label="Remove photo">×</button>
+                      </div>
+                    ))}
+                    <div className="rl-photo-add" onClick={() => photoInputRef.current?.click()}>
+                      {photoUploading ? <span className="rl-photo-up">↑</span> : <><span className="rl-photo-ic">📷</span><span>Add</span></>}
+                      <input ref={photoInputRef} type="file" accept="image/*" multiple capture="environment"
+                        style={{ display: 'none' }} onChange={handlePhoto} />
+                    </div>
+                  </div>
+
+                  {error && <p className="rl-error">{error}</p>}
+                  <button className="rl-btn rl-btn-primary rl-submit" onClick={submitVisit} disabled={busy}>
+                    {busy ? 'Saving…' : 'Save Visit'}
+                  </button>
+                </>
+              )}
+
+              {!lead && error && <p className="rl-error">{error}</p>}
+            </div>
+          )}
+        </div>
+      </div>
+      <style dangerouslySetInnerHTML={{ __html: css }} />
+    </main>
+  );
+}
+
+// ── Styles ────────────────────────────────────────────────────────────────────
+const css = `
+  @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;700;800;900&family=Barlow:wght@300;400;500;600&display=swap');
+
+  .rl-wrap.theme-dark {
+    --p:#0D0D0B; --base:#1A1A18; --elev:#2E2E2C; --sunken:#0D0D0B;
+    --gold:#F6C324; --gold-h:#FAE04D; --text:#E8E7E2; --muted:#949390; --dim:#5C5B58;
+    --border:rgba(255,255,255,0.10); --border-s:rgba(255,255,255,0.06);
+    --sel-bg:#F6C324; --sel-fg:#0D0D0B; --focus:#F6C324;
+    --danger-bg:rgba(232,96,96,0.12); --danger-fg:#FDDCDC; --danger-bd:rgba(232,96,96,0.30);
+    --info-bg:rgba(26,61,110,0.30); --info-fg:#B8CCE8; --info-bd:rgba(107,158,208,0.30);
+    --section-bg:rgba(246,195,36,0.06);
+    background:var(--p); color:var(--text);
+  }
+  .rl-wrap.theme-light {
+    --p:#F7F6F3; --base:#FFFFFF; --elev:#FFFFFF; --sunken:#F0EFEA;
+    --gold:#E6A700; --gold-h:#C88F00; --text:#0D0D0B; --muted:#5C5B58; --dim:#949390;
+    --border:#C8C7C0; --border-s:#E8E7E2;
+    --sel-bg:#F6C324; --sel-fg:#0D0D0B; --focus:#1A3D6E;
+    --danger-bg:#FEF2F2; --danger-fg:#C0392B; --danger-bd:#E86060;
+    --info-bg:#F0EFEA; --info-fg:#2E2E2C; --info-bd:#C8C7C0;
+    --section-bg:rgba(246,195,36,0.10);
+    background:var(--p); color:var(--text);
+  }
+  .rl-wrap.theme-navy {
+    --p:#071022; --base:#0D2040; --elev:#1A3D6E; --sunken:#071022;
+    --gold:#F6C324; --gold-h:#FAE04D; --text:#FFFFFF; --muted:#B8CCE8; --dim:#6B9ED0;
+    --border:rgba(107,158,208,0.20); --border-s:rgba(107,158,208,0.12);
+    --sel-bg:#F6C324; --sel-fg:#071022; --focus:#F6C324;
+    --danger-bg:rgba(232,96,96,0.14); --danger-fg:#FDDCDC; --danger-bd:rgba(232,96,96,0.35);
+    --info-bg:rgba(45,107,168,0.20); --info-fg:#B8CCE8; --info-bd:rgba(107,158,208,0.35);
+    --section-bg:rgba(107,158,208,0.08);
+    background:var(--p); color:var(--text);
+  }
+
+  .rl-wrap { min-height:100vh; margin:0; padding:0; font-family:'Barlow',sans-serif; }
+  .rl-shell { max-width:860px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column; background:var(--base); }
+
+  /* Header */
+  .rl-header {
+    display:flex; align-items:center; gap:12px;
+    padding:12px 18px; background:var(--base);
+    border-bottom:1px solid var(--border); position:sticky; top:0; z-index:50;
+    padding-top:calc(12px + env(safe-area-inset-top));
+  }
+  .rl-brand { display:flex; align-items:center; gap:11px; }
+  .rl-disc { width:34px; height:34px; border-radius:50%; background:var(--gold); flex-shrink:0; box-shadow:0 2px 8px rgba(246,195,36,0.25); }
+  .rl-brand-text { display:flex; flex-direction:column; line-height:1; }
+  .rl-brand-name { font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:20px; text-transform:uppercase; letter-spacing:0.02em; color:var(--text); }
+  .rl-brand-sub { font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:0.14em; color:var(--gold); margin-top:2px; }
+  .rl-theme-toggle { display:flex; gap:3px; background:var(--sunken); border-radius:8px; padding:3px; margin-left:auto; }
+  .rl-theme-btn {
+    background:transparent; border:0; color:var(--muted); border-radius:6px; padding:8px 13px;
+    font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:11px;
+    text-transform:uppercase; letter-spacing:0.08em; cursor:pointer; min-height:36px; transition:.12s;
+  }
+  .rl-theme-btn:hover { background:var(--elev); color:var(--text); }
+  .rl-theme-btn.is-active { background:var(--sel-bg); color:var(--sel-fg); font-weight:900; }
+
+  /* Topbar: rep + mode */
+  .rl-topbar {
+    display:flex; align-items:flex-end; gap:14px; flex-wrap:wrap;
+    padding:14px 18px; background:var(--sunken); border-bottom:1px solid var(--border);
+  }
+  .rl-rep-field { display:flex; flex-direction:column; gap:5px; }
+  .rl-mini-label { font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:10px; text-transform:uppercase; letter-spacing:0.12em; color:var(--dim); }
+  .rl-mode-toggle { display:flex; gap:4px; background:var(--base); border:1px solid var(--border); border-radius:10px; padding:4px; margin-left:auto; }
+  .rl-mode-btn {
+    padding:10px 20px; min-height:44px; background:transparent; border:0; color:var(--muted); border-radius:7px;
+    font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:13px;
+    text-transform:uppercase; letter-spacing:0.06em; cursor:pointer; transition:.12s;
+  }
+  .rl-mode-btn:hover { color:var(--text); }
+  .rl-mode-btn.is-active { background:var(--gold); color:var(--sel-fg); font-weight:900; }
+
+  /* Body / form */
+  .rl-body { padding:18px 18px calc(40px + env(safe-area-inset-bottom)); flex:1; }
+  .rl-form { display:flex; flex-direction:column; gap:13px; }
+  .rl-section-title {
+    font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:15px;
+    text-transform:uppercase; letter-spacing:0.04em; color:var(--gold);
+    border-bottom:1px solid var(--border); padding-bottom:7px; margin-top:8px;
+    display:flex; align-items:baseline; justify-content:space-between; gap:10px;
+  }
+  .rl-section-title:first-child { margin-top:0; }
+  .rl-section-note { font-family:'Barlow',sans-serif; font-weight:600; font-size:11px; text-transform:none; letter-spacing:0; color:var(--muted); }
+
+  .rl-field { display:flex; flex-direction:column; gap:6px; }
+  .rl-label { font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); }
+  .rl-req { color:var(--gold); }
+  .rl-hint { margin:2px 0 0; font-size:12px; color:var(--dim); }
+  .rl-input {
+    width:100%; box-sizing:border-box; padding:11px 13px; min-height:46px;
+    font-size:15px; font-family:'Barlow',sans-serif; background:var(--sunken); color:var(--text);
+    border:1px solid var(--border); border-radius:8px; appearance:none; -webkit-appearance:none; transition:border-color .12s;
+  }
+  .rl-input:focus { outline:none; border-color:var(--gold); box-shadow:0 0 0 3px rgba(246,195,36,0.18); }
+  .rl-input-sm { max-width:220px; }
+  .rl-textarea { min-height:82px; resize:vertical; line-height:1.5; }
+  .rl-row-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .rl-row-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+
+  /* Segmented (distance) */
+  .rl-seg { display:flex; gap:4px; background:var(--sunken); border:1px solid var(--border); border-radius:9px; padding:4px; }
+  .rl-seg-btn {
+    flex:1; padding:10px 14px; min-height:44px; background:transparent; border:0; color:var(--muted); border-radius:6px;
+    font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:13px; text-transform:uppercase; letter-spacing:0.05em; cursor:pointer; transition:.12s;
+  }
+  .rl-seg-btn.is-active { background:var(--gold); color:var(--sel-fg); font-weight:900; }
+
+  /* Search */
+  .rl-search-field { position:relative; }
+  .rl-search-list {
+    list-style:none; margin:4px 0 0; padding:0; background:var(--elev); border:1px solid var(--border);
+    border-radius:8px; overflow:hidden; position:absolute; left:0; right:0; top:100%; z-index:30; box-shadow:0 6px 20px rgba(0,0,0,0.3);
+  }
+  .rl-search-item { display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; padding:12px 14px; cursor:pointer; border-bottom:1px solid var(--border-s); }
+  .rl-search-item:last-child { border-bottom:0; }
+  .rl-search-item:hover { background:var(--section-bg); }
+  .rl-search-name { font-size:14px; font-weight:600; color:var(--text); }
+  .rl-search-meta { font-family:'Barlow Condensed',sans-serif; font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:0.06em; }
+
+  /* Lead card */
+  .rl-lead-card { background:var(--info-bg); border:1px solid var(--info-bd); border-radius:10px; padding:14px 16px; display:flex; flex-direction:column; gap:10px; }
+  .rl-lead-card-top { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .rl-lead-company { font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:19px; text-transform:uppercase; color:var(--text); }
+  .rl-pill { font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:10px; text-transform:uppercase; letter-spacing:0.08em; padding:4px 10px; border-radius:50px; white-space:nowrap; }
+  .rl-pill-local { background:rgba(45,140,122,0.18); color:#79d4c2; border:1px solid rgba(45,140,122,0.4); }
+  .rl-pill-long  { background:rgba(246,195,36,0.16); color:var(--gold); border:1px solid rgba(246,195,36,0.4); }
+  .rl-lead-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px 16px; }
+  .rl-lead-grid > div { display:flex; flex-direction:column; }
+  .rl-lc-l { font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:9px; text-transform:uppercase; letter-spacing:0.1em; color:var(--dim); }
+  .rl-lc-v { font-size:14px; color:var(--info-fg); }
+  .rl-clear-btn {
+    align-self:flex-start; padding:8px 15px; min-height:38px; background:var(--elev); color:var(--muted);
+    border:1px solid var(--border); border-radius:8px; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:12px;
+    text-transform:uppercase; letter-spacing:0.06em; cursor:pointer;
+  }
+  .rl-clear-btn:hover { color:var(--text); }
+
+  /* Product line items */
+  .rl-items { display:flex; flex-direction:column; gap:8px; }
+  .rl-item-row { display:grid; grid-template-columns:1fr 78px 84px 92px 40px; gap:8px; align-items:center; }
+  .rl-item-product { min-height:44px; }
+  .rl-item-qty { min-height:44px; text-align:right; }
+  .rl-item-price, .rl-item-total { font-family:'Barlow',sans-serif; font-size:14px; text-align:right; color:var(--text); }
+  .rl-item-price { color:var(--muted); }
+  .rl-item-total { font-weight:600; }
+  .rl-item-del {
+    width:36px; height:44px; background:var(--danger-bg); color:var(--danger-fg); border:1px solid var(--danger-bd);
+    border-radius:8px; font-size:20px; line-height:1; cursor:pointer;
+  }
+  .rl-item-del:disabled { opacity:0.3; cursor:not-allowed; }
+  .rl-items-foot { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:4px; }
+  .rl-add-btn {
+    padding:9px 16px; min-height:42px; background:transparent; color:var(--gold); border:1px dashed var(--border);
+    border-radius:8px; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:12px; text-transform:uppercase; letter-spacing:0.06em; cursor:pointer;
+  }
+  .rl-add-btn:hover { border-color:var(--gold); }
+  .rl-grand { display:flex; align-items:baseline; gap:10px; }
+  .rl-grand-l { font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted); }
+  .rl-grand-v { font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:22px; color:var(--gold); }
+
+  /* Photos */
+  .rl-photo-row { display:flex; flex-wrap:wrap; gap:10px; }
+  .rl-photo-thumb { position:relative; width:84px; height:84px; border-radius:8px; overflow:hidden; border:1px solid var(--border); }
+  .rl-photo-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+  .rl-photo-remove { position:absolute; top:3px; right:3px; width:22px; height:22px; border-radius:50%; border:0; background:rgba(0,0,0,0.6); color:#fff; font-size:15px; line-height:1; cursor:pointer; }
+  .rl-photo-add {
+    width:84px; height:84px; border-radius:8px; border:1px dashed var(--border); background:var(--sunken);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; cursor:pointer;
+    font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:11px; text-transform:uppercase; color:var(--muted);
+  }
+  .rl-photo-add:hover { border-color:var(--gold); color:var(--gold); }
+  .rl-photo-ic { font-size:20px; }
+  .rl-photo-up { font-size:22px; color:var(--gold); }
+
+  /* Buttons / error */
+  .rl-btn {
+    display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:13px 22px; min-height:50px;
+    border-radius:9px; border:1px solid transparent; cursor:pointer;
+    font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:15px; text-transform:uppercase; letter-spacing:0.06em; transition:.12s;
+  }
+  .rl-btn-primary { background:var(--gold); color:var(--sel-fg); }
+  .rl-btn-primary:hover:not(:disabled) { background:var(--gold-h); }
+  .rl-btn:disabled { opacity:0.5; cursor:not-allowed; }
+  .rl-submit { margin-top:12px; width:100%; }
+  .rl-error {
+    background:var(--danger-bg); color:var(--danger-fg); border:1px solid var(--danger-bd);
+    border-radius:8px; padding:11px 14px; font-size:14px; margin-top:4px;
+  }
+
+  /* Success */
+  .rl-thanks { max-width:460px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:32px 22px; gap:6px; }
+  .rl-thanks-logo { width:130px; height:auto; margin-bottom:6px; }
+  .rl-check { width:64px; height:64px; border-radius:50%; background:var(--gold); color:var(--sel-fg); font-size:34px; display:flex; align-items:center; justify-content:center; margin-bottom:8px; }
+  .rl-thanks h1 { font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:30px; text-transform:uppercase; color:var(--text); }
+  .rl-thanks-ref { font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:20px; color:var(--gold); letter-spacing:0.04em; }
+  .rl-thanks-sub { font-size:15px; color:var(--muted); max-width:340px; }
+  .rl-thanks-btns { margin-top:20px; width:100%; max-width:320px; }
+  .rl-thanks-btns .rl-btn { width:100%; }
+
+  @media (max-width:640px) {
+    .rl-row-2, .rl-row-3 { grid-template-columns:1fr; }
+    .rl-item-row { grid-template-columns:1fr 72px 1fr 38px; }
+    .rl-item-product { grid-column:1 / -1; }
+    .rl-topbar { align-items:stretch; }
+    .rl-mode-toggle { margin-left:0; width:100%; }
+    .rl-mode-btn { flex:1; }
+    input, select, textarea { font-size:16px; }
+  }
+`;
