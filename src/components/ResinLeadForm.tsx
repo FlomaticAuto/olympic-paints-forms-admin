@@ -56,6 +56,11 @@ export default function ResinLeadForm() {
     if (t === 'theme-dark' || t === 'theme-light' || t === 'theme-navy') setThemeState(t);
     const r = window.localStorage.getItem(REP_KEY);
     if (r) setRepState(r);
+    // Register the PWA service worker (scoped to /resin-leads) so the form
+    // installs as a standalone phone app and opens instantly / offline.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/resin-sw.js', { scope: '/resin-leads' }).catch(() => {});
+    }
   }, []);
   const setTheme = (t: Theme) => { setThemeState(t); window.localStorage.setItem(THEME_KEY, t); };
   const setRep   = (r: string) => { setRepState(r); window.localStorage.setItem(REP_KEY, r); };
@@ -551,7 +556,7 @@ const css = `
     background:var(--p); color:var(--text);
   }
 
-  .rl-wrap { min-height:100vh; margin:0; padding:0; font-family:'Barlow',sans-serif; }
+  .rl-wrap { min-height:100vh; margin:0; padding:0; font-family:'Barlow',sans-serif; -webkit-tap-highlight-color:rgba(0,0,0,0); -webkit-text-size-adjust:100%; overscroll-behavior-y:contain; }
   .rl-shell { max-width:860px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column; background:var(--base); }
 
   /* Header */
@@ -719,12 +724,26 @@ const css = `
   .rl-thanks-btns .rl-btn { width:100%; }
 
   @media (max-width:640px) {
+    .rl-header { padding:11px 14px; padding-top:calc(11px + env(safe-area-inset-top)); gap:8px; }
+    .rl-brand-name { font-size:18px; }
+    .rl-brand-sub { font-size:10px; }
+    .rl-disc { width:30px; height:30px; }
+    .rl-theme-toggle { padding:2px; gap:2px; }
+    .rl-theme-btn { padding:9px 9px; font-size:10px; letter-spacing:0.03em; min-height:38px; }
+    .rl-body { padding:16px 14px calc(40px + env(safe-area-inset-bottom)); }
+    .rl-topbar { align-items:stretch; padding:12px 14px; gap:10px; }
+    .rl-rep-field { width:100%; }
+    .rl-input-sm { max-width:none; }
     .rl-row-2, .rl-row-3 { grid-template-columns:1fr; }
-    .rl-item-row { grid-template-columns:1fr 72px 1fr 38px; }
+    .rl-lead-grid { grid-template-columns:1fr; }
+    .rl-item-row { grid-template-columns:1fr 68px 1fr 36px; }
     .rl-item-product { grid-column:1 / -1; }
-    .rl-topbar { align-items:stretch; }
     .rl-mode-toggle { margin-left:0; width:100%; }
-    .rl-mode-btn { flex:1; }
-    input, select, textarea { font-size:16px; }
+    .rl-mode-btn { flex:1; padding:12px 8px; }
+    input, select, textarea, .rl-btn { font-size:16px; }
+  }
+  /* Full-screen app feel when launched from the home screen */
+  @media (display-mode:standalone) {
+    .rl-header { padding-top:calc(14px + env(safe-area-inset-top)); }
   }
 `;
