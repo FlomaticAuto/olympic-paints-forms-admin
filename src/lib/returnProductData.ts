@@ -22,6 +22,7 @@ const PRIMER_SIZES        = ['5L', '20L'];
 const SMALL_SIZES         = ['500ml', '1L', '5L'];
 const OXIDE_POWDER_SIZES  = ['500g', '500g x 24', '5kg'];
 const STAINER_SIZES       = ['50ml', '100ml', 'Box of 12 × 50ml', 'Box of 12 × 100ml'];
+const CARBOLINEUM_SIZES   = ['750ml', '5L'];
 
 export const CATEGORIES: CategoryEntry[] = [
   {
@@ -95,7 +96,7 @@ export const CATEGORIES: CategoryEntry[] = [
   },
   {
     label: 'Waterproofing',
-    products: ['Acrylic Rain Proof', 'Fibre Restore'],
+    products: ['Acrylic Rain Proof', 'Fibre Restore', 'Face Brick Dressing'],
   },
   {
     label: 'Wood',
@@ -106,7 +107,8 @@ export const CATEGORIES: CategoryEntry[] = [
     products: [
       'Putty',
       'Thinners',
-      'Carborundum / Sandpaper',
+      'Sandpaper',
+      'Carbolineum',
       'Turpentine',
       'Paint Remover',
       'Other Accessory',
@@ -152,7 +154,7 @@ export const PRODUCT_DATA: Record<string, ProductInfo> = {
     sizes: PVA_SIZES,
   },
   'Decor Acrylic PVA': {
-    colours: ['White', 'Cream', 'Kiwi', 'Chestnut', 'Guava', 'Peach', 'Maize', 'Mushroom', 'Cranberry', 'Night Sky', 'Silver Mist'],
+    colours: ['White', 'Cream', 'Kiwi', 'Chestnut', 'Guava', 'Peach', 'Apricot', 'Maize', 'Mushroom', 'Cranberry', 'Night Sky', 'Silver Mist'],
     sizes: PVA_SIZES,
   },
   'Hi-Hiding Super Acrylic Contractors PVA': {
@@ -183,7 +185,7 @@ export const PRODUCT_DATA: Record<string, ProductInfo> = {
   },
   'Pick \'n Save Econo Gloss Enamel': {
     colours: ['White', 'Green', 'Cream', 'Yellow', 'Blue', 'Peach', 'Golden Brown', 'Black', 'Pink'],
-    sizes: ['5L', '20L'],
+    sizes: ['1L', '5L', '20L'],
   },
   'Flat White Enamel': {
     colours: ['White'],
@@ -196,7 +198,7 @@ export const PRODUCT_DATA: Record<string, ProductInfo> = {
 
   // ── QD ──
   'Quick Drying Enamel': {
-    colours: ['White', 'Dark Grey', 'Green', 'Black', 'Royal Blue', 'CAT Yellow', 'Bronze', 'PWD Brown', 'JD Green', 'Burgundy', 'Signal Red', 'Golden Brown', 'Silver'],
+    colours: ['White', 'Dark Grey', 'Green', 'Black', 'Royal Blue', 'CAT Yellow', 'Bronze', 'PWD Brown', 'JD Green', 'Burgundy', 'Signal Red', 'Golden Brown', 'Silver', 'Charcoal'],
     sizes: ENAMEL_SIZES,
   },
   'QD Primer': {
@@ -260,6 +262,10 @@ export const PRODUCT_DATA: Record<string, ProductInfo> = {
     colours: ['Black', 'Burgundy', 'Grey', 'Brown', 'Terracotta', 'Red', 'Green', 'Charcoal'],
     sizes: ROOF_SIZES,
   },
+  'Face Brick Dressing': {
+    colours: ['N/A'],
+    sizes: ['1L', '5L', '20L'],
+  },
 
   // ── Wood ──
   'Wood Varnish': {
@@ -274,7 +280,8 @@ export const PRODUCT_DATA: Record<string, ProductInfo> = {
   // ── Accessories ──
   'Putty':                    { colours: ['N/A'], sizes: ['500g', '1kg', '2kg', '5kg', '10kg', '20kg', '40kg', 'Other'] },
   'Thinners':                 { colours: ['N/A'], sizes: ['1L', '2.5L', '5L', '20L', 'Other'] },
-  'Carborundum / Sandpaper':  { colours: ['N/A'], sizes: ['60 grit', '80 grit', '120 grit', '180 grit', '240 grit', 'Other'] },
+  'Sandpaper':                { colours: ['N/A'], sizes: ['60 grit', '80 grit', '120 grit', '180 grit', '240 grit', 'Other'] },
+  'Carbolineum':              { colours: ['N/A'], sizes: CARBOLINEUM_SIZES },
   'Turpentine':               { colours: ['N/A'], sizes: ['1L', '2.5L', '5L', '20L', 'Other'] },
   'Paint Remover':            { colours: ['N/A'], sizes: ['500ml', '1L', '5L', 'Other'] },
   'Other Accessory':          { colours: ['N/A'], sizes: ['500ml', '1L', '5L', '20L', 'Other'] },
