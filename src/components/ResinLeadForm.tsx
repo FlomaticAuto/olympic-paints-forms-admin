@@ -6,7 +6,7 @@ type Theme = 'theme-dark' | 'theme-light' | 'theme-navy';
 const THEME_KEY = 'rl-theme';
 const REP_KEY   = 'rl-rep';
 
-const REPS = ['Aboo', 'Amit', 'Bhadresh', 'Byron', 'Nikhil', 'Quintus'];
+const REPS = ['Kim Williams'];
 const LEAD_SOURCES = ['Cold Call', 'Referral', 'Website', 'Trade Show / Expo', 'Existing Customer', 'Email Campaign', 'Walk-in', 'Social Media', 'Other'];
 const LEAD_STATUSES = ['New', 'Contacted', 'Qualified', 'Quoted', 'Negotiating', 'Won', 'Lost'];
 const DISTANCES: Distance[] = ['Local', 'Long Distance'];
@@ -47,8 +47,8 @@ function todayLocal(): string {
 function fmtR(n: number): string { return 'R' + n.toFixed(2); }
 
 export default function ResinLeadForm() {
-  const [theme, setThemeState] = useState<Theme>('theme-navy');
-  const [rep, setRepState] = useState('');
+  const [theme, setThemeState] = useState<Theme>('theme-light');
+  const [rep, setRepState] = useState('Kim Williams');
   const [mode, setMode] = useState<'capture' | 'visit'>('capture');
 
   useEffect(() => {
@@ -270,7 +270,6 @@ export default function ResinLeadForm() {
           <div className="rl-rep-field">
             <label className="rl-mini-label">Rep</label>
             <select className="rl-input rl-input-sm" value={rep} onChange={e => setRep(e.target.value)}>
-              <option value="">— Select —</option>
               {REPS.map(r => <option key={r} value={r}>{r}</option>)}
             </select>
           </div>
