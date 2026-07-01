@@ -41,6 +41,7 @@ interface Product {
   category: string | null;
 }
 interface Supplier { id: string; name: string; }
+interface PriceStat { supplier: string; product: string; last: number; avg: number; count: number; }
 
 interface LineItem {
   product_id: string;
@@ -90,13 +91,16 @@ export default function ResinLeadForm() {
     }
   }, []);
 
-  // Load the product catalogue + supplier database.
-  useEffect(() => {
+  // Load the product catalogue, supplier database, and competitor-price index.
+  const loadRefData = useCallback(() => {
     fetch('/api/resin-leads/products').then(r => r.json())
       .then(d => setCatalogue(Array.isArray(d) ? d : [])).catch(() => {});
     fetch('/api/resin-leads/suppliers').then(r => r.json())
       .then(d => setSuppliers(Array.isArray(d) ? d : [])).catch(() => {});
+    fetch('/api/resin-leads/supplier-price-index').then(r => r.json())
+      .then(d => setPriceIndex(Array.isArray(d) ? d : [])).catch(() => {});
   }, []);
+  useEffect(() => { loadRefData(); }, [loadRefData]);
   const setTheme = (t: Theme) => { setThemeState(t); window.localStorage.setItem(THEME_KEY, t); };
   const setRep   = (r: string) => { setRepState(r); window.localStorage.setItem(REP_KEY, r); };
 
@@ -118,6 +122,7 @@ export default function ResinLeadForm() {
   // Product catalogue + supplier database (loaded from Supabase)
   const [catalogue, setCatalogue] = useState<Product[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [priceIndex, setPriceIndex] = useState<PriceStat[]>([]);
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [np, setNp] = useState({ name: '', code: '', category: 'Solvent/Thinner', local_price: '', long_price: '' });
   const [savingProduct, setSavingProduct] = useState(false);
@@ -177,14 +182,16 @@ export default function ResinLeadForm() {
     setItems(prev => prev.map((it, idx) => idx === i ? { ...it, ...patch } : it));
   }
   function selectProduct(i: number, product_id: string) {
+    // Never auto-fill the price — the rep always types the confirmed value.
+    // The catalogue list price is shown only as a reference hint.
     const p = catalogue.find(x => x.id === product_id);
-    const auto = catalogPrice(p, distance);
-    updateItem(i, {
-      product_id,
-      name: p?.name ?? '',
-      code: p?.code ?? '',
-      our_price: auto != null ? String(auto) : '',
-    });
+    updateItem(i, { product_id, name: p?.name ?? '', code: p?.code ?? '' });
+  }
+  function supplierHint(supplier: string, productName: string): PriceStat | null {
+    const s = supplier.trim().toLowerCase();
+    const p = productName.trim().toLowerCase();
+    if (!s || !p) return null;
+    return priceIndex.find(x => x.supplier.toLowerCase() === s && x.product.toLowerCase() === p) ?? null;
   }
   function addItem() { setItems(prev => [...prev, blankItem()]); }
   function removeItem(i: number) { setItems(prev => prev.filter((_, idx) => idx !== i)); }
@@ -306,6 +313,7 @@ export default function ResinLeadForm() {
     clearLead(); setVisitDate(todayLocal()); setOutcome(''); setNextFollowUp('');
     setVisitNotes(''); setItems([blankItem()]); setShowAddProduct(false);
     setPhotoPreviews([]); setPhotoUrls([]);
+    loadRefData();   // pick up any suppliers/prices captured this session
   }
 
   // ── Success screen ────────────────────────────────────────────────────────
@@ -537,7 +545,10 @@ export default function ResinLeadForm() {
                     <span className="rl-section-note">Prices auto-fill {distance} · editable</span>
                   </div>
                   <div className="rl-items">
-                    {items.map((it, i) => (
+                    {items.map((it, i) => {
+                      const listPrice = catalogPrice(catalogue.find(x => x.id === it.product_id), distance);
+                      const hint = supplierHint(it.supplier, it.name);
+                      return (
                       <div key={i} className="rl-item-card">
                         <div className="rl-item-card-head">
                           <select className="rl-input rl-item-product" value={it.product_id}
@@ -554,8 +565,9 @@ export default function ResinLeadForm() {
                           <div className="rl-field">
                             <label className="rl-label">Our Price (R)</label>
                             <input className="rl-input" type="number" inputMode="decimal" min="0"
-                              placeholder="Enter price" value={it.our_price}
+                              placeholder="Type price" value={it.our_price}
                               onChange={e => updateItem(i, { our_price: e.target.value })} />
+                            {listPrice != null && <p className="rl-ref">List ref: {fmtR(listPrice)}</p>}
                           </div>
                           <div className="rl-field">
                             <label className="rl-label">Est. Qty (kg)</label>
@@ -585,8 +597,9 @@ export default function ResinLeadForm() {
                           <div className="rl-field">
                             <label className="rl-label">Their Price (R)</label>
                             <input className="rl-input" type="number" inputMode="decimal" min="0"
-                              placeholder="Supplier price" value={it.supplier_price}
+                              placeholder="Type price" value={it.supplier_price}
                               onChange={e => updateItem(i, { supplier_price: e.target.value })} />
+                            {hint && <p className="rl-ref">Last {fmtR(hint.last)} · Avg {fmtR(hint.avg)} · {hint.count}×</p>}
                           </div>
                           <div className="rl-field">
                             <label className="rl-label">Est. Value</label>
@@ -600,7 +613,8 @@ export default function ResinLeadForm() {
                             onChange={e => updateItem(i, { notes: e.target.value })} />
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                   <datalist id="rl-suppliers">
                     {suppliers.map(s => <option key={s.id} value={s.name} />)}
@@ -798,6 +812,7 @@ const css = `
   .rl-label { font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); }
   .rl-req { color:var(--gold); }
   .rl-hint { margin:2px 0 0; font-size:12px; color:var(--dim); }
+  .rl-ref { margin:4px 0 0; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:11px; letter-spacing:0.03em; color:var(--muted); text-transform:uppercase; }
   .rl-input {
     width:100%; box-sizing:border-box; padding:11px 13px; min-height:46px;
     font-size:15px; font-family:'Barlow',sans-serif; background:var(--sunken); color:var(--text);
