@@ -1,0 +1,205 @@
+<title>How to Use the Quote & Price Change Log</title>
+<style>
+  :root{
+    --page:#F7F6F3; --card:#FFFFFF; --ink:#0D0D0B; --muted:#5C5B58; --dim:#8f8e8a;
+    --gold:#E6A700; --gold-tint:rgba(230,167,0,.10); --line:#D9D8D2; --line-s:#ECEBE6;
+    --do:#2D8C7A; --do-tint:rgba(45,140,122,.10); --dont:#C0392B; --dont-tint:rgba(192,57,43,.08);
+    --disp:'Barlow Condensed','Arial Narrow',system-ui,sans-serif;
+    --body:'Barlow','Segoe UI',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--ink);font-family:var(--body);
+    line-height:1.55;-webkit-font-smoothing:antialiased;}
+  .sheet{max-width:770px;margin:0 auto;padding:36px 26px 60px;}
+
+  /* Header */
+  .head{display:flex;align-items:center;gap:14px;padding-bottom:18px;border-bottom:2px solid var(--ink);}
+  .disc{width:42px;height:42px;border-radius:50%;background:var(--gold);flex-shrink:0;
+    box-shadow:0 2px 8px rgba(230,167,0,.3);}
+  .head h1{font-family:var(--disp);font-weight:900;font-size:29px;line-height:1;margin:0;
+    text-transform:uppercase;letter-spacing:.01em;text-wrap:balance;}
+  .head .eyebrow{font-family:var(--disp);font-weight:700;font-size:12px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--gold);margin-bottom:3px;}
+
+  .lede{font-size:16px;color:var(--muted);margin:20px 0 26px;max-width:62ch;}
+  .lede strong{color:var(--ink);}
+
+  h2{font-family:var(--disp);font-weight:900;font-size:19px;text-transform:uppercase;
+    letter-spacing:.03em;margin:34px 0 12px;padding-bottom:7px;border-bottom:1px solid var(--line);
+    display:flex;align-items:baseline;gap:9px;}
+  h2 .n{color:var(--gold);font-size:16px;}
+
+  /* When to log — two columns */
+  .cue{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:4px;}
+  .cue-col{border-radius:12px;padding:15px 17px;border:1px solid var(--line);}
+  .cue-do{background:var(--do-tint);border-color:rgba(45,140,122,.32);}
+  .cue-dont{background:var(--dont-tint);border-color:rgba(192,57,43,.28);}
+  .cue-col .tag{font-family:var(--disp);font-weight:800;font-size:13px;text-transform:uppercase;
+    letter-spacing:.06em;display:flex;align-items:center;gap:7px;margin-bottom:10px;}
+  .cue-do .tag{color:var(--do);}
+  .cue-dont .tag{color:var(--dont);}
+  .cue-col ul{margin:0;padding-left:2px;list-style:none;}
+  .cue-col li{position:relative;padding-left:22px;margin-bottom:8px;font-size:14.5px;}
+  .cue-col li::before{position:absolute;left:0;top:0;font-weight:700;}
+  .cue-do li::before{content:"✓";color:var(--do);}
+  .cue-dont li::before{content:"✕";color:var(--dont);}
+
+  /* Steps — genuine sequence */
+  .steps{display:flex;flex-direction:column;gap:11px;counter-reset:s;}
+  .step{display:flex;gap:14px;align-items:flex-start;background:var(--card);
+    border:1px solid var(--line);border-radius:12px;padding:14px 16px;}
+  .step .num{counter-increment:s;flex-shrink:0;width:30px;height:30px;border-radius:8px;
+    background:var(--ink);color:var(--page);font-family:var(--disp);font-weight:900;font-size:16px;
+    display:flex;align-items:center;justify-content:center;}
+  .step .num::before{content:counter(s);}
+  .step .b{flex:1;}
+  .step .t{font-family:var(--disp);font-weight:800;font-size:16px;text-transform:uppercase;
+    letter-spacing:.02em;margin-bottom:2px;}
+  .step .d{font-size:14.5px;color:var(--muted);}
+  .step .d b{color:var(--ink);font-weight:600;}
+  .chip{display:inline-block;background:var(--gold-tint);border:1px solid rgba(230,167,0,.35);
+    color:#8a6400;font-family:var(--disp);font-weight:700;font-size:12px;letter-spacing:.03em;
+    padding:1px 8px;border-radius:5px;white-space:nowrap;}
+
+  /* Reason code table */
+  .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;margin-top:6px;}
+  table{width:100%;border-collapse:collapse;font-size:14px;}
+  th{background:var(--gold-tint);font-family:var(--disp);font-weight:800;font-size:12px;
+    text-transform:uppercase;letter-spacing:.05em;text-align:left;padding:10px 14px;
+    border-bottom:1px solid var(--line);}
+  td{padding:11px 14px;border-bottom:1px solid var(--line-s);vertical-align:top;}
+  tr:last-child td{border-bottom:0;}
+  td.code{font-family:var(--disp);font-weight:700;font-size:14.5px;white-space:nowrap;padding-right:20px;}
+  td.ex{color:var(--muted);}
+
+  .note{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--gold);
+    border-radius:10px;padding:14px 17px;margin-top:8px;font-size:14.5px;color:var(--muted);}
+  .note b{color:var(--ink);}
+
+  .why{margin-top:34px;padding:20px 22px;border-radius:12px;background:var(--ink);color:var(--page);}
+  .why .tag{font-family:var(--disp);font-weight:800;font-size:12px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--gold);margin-bottom:8px;}
+  .why p{margin:0;font-size:15px;line-height:1.6;color:#e3e2dd;}
+  .why b{color:#fff;}
+
+  .foot{margin-top:30px;padding-top:16px;border-top:1px solid var(--line);
+    font-size:12.5px;color:var(--dim);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+
+  @media(max-width:560px){.cue{grid-template-columns:1fr;}.head h1{font-size:24px;}}
+  @media print{body{background:#fff;}.step,.cue-col,.tablewrap,.note{break-inside:avoid;}}
+</style>
+
+<div class="sheet">
+
+  <div class="head">
+    <div class="disc"></div>
+    <div>
+      <div class="eyebrow">Sales Admin · Quick Guide</div>
+      <h1>The Quote &amp; Price Change Log</h1>
+    </div>
+  </div>
+
+  <p class="lede">
+    Every time a rep asks you to <strong>redo a quote</strong>, <strong>change a price</strong>,
+    or fix a pricing mistake, log it here. It takes about ten seconds. You are not filing a
+    complaint — you are keeping a simple record so we can finally see the pattern and sort it out.
+  </p>
+
+  <h2><span class="n">01</span> When to log an entry</h2>
+  <div class="cue">
+    <div class="cue-col cue-do">
+      <div class="tag">Log it</div>
+      <ul>
+        <li>A rep asks for a brand-new quote</li>
+        <li>A rep wants a quote changed again</li>
+        <li>A rep asks to change the price list</li>
+        <li>You catch or fix a wrong price</li>
+        <li>The same quote comes back a third, fourth, fifth time</li>
+      </ul>
+    </div>
+    <div class="cue-col cue-dont">
+      <div class="tag">Skip it</div>
+      <ul>
+        <li>A normal order going through with no price change</li>
+        <li>A general question that isn't about a quote or price</li>
+        <li>Something you already logged five minutes ago — one entry per change</li>
+      </ul>
+    </div>
+  </div>
+  <div class="note">
+    <b>Rule of thumb:</b> if a rep made you do the same work twice, or made you change a price,
+    that's one entry. When in doubt, log it — an extra entry is harmless.
+  </div>
+
+  <h2><span class="n">02</span> How to log one</h2>
+  <div class="steps">
+    <div class="step">
+      <div class="num"></div>
+      <div class="b">
+        <div class="t">Open the form</div>
+        <div class="d">On the tablet or PC, open <span class="chip">Quote &amp; Price Change Log</span>.
+          Pick your name — <b>Aziza</b> or <b>Emeshnee</b> — at the top. It remembers you next time.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="num"></div>
+      <div class="b">
+        <div class="t">Tap the rep &amp; what happened</div>
+        <div class="d">Tap the <b>rep</b>, then the <b>event type</b> (New Quote, Quote Revision,
+          Price-List Change, or Pricing Error). One tap each — no typing.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="num"></div>
+      <div class="b">
+        <div class="t">Add the account &amp; the reason</div>
+        <div class="d">Type the <b>customer name</b>, then tap the <b>reason</b> (see the list below).
+          If it's a quote being redone, set the <b>revision number</b> — 2 means it's the second
+          time, 3 the third, and so on. That number is what shows how bad the churn is.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="num"></div>
+      <div class="b">
+        <div class="t">Log it</div>
+        <div class="d">Tap <b>Log Change</b>. Done. If the next entry is for the same rep, tap
+          <span class="chip">Log Another (same rep)</span> to save time.</div>
+      </div>
+    </div>
+  </div>
+
+  <h2><span class="n">03</span> Picking the right reason</h2>
+  <p style="font-size:14.5px;color:var(--muted);margin:2px 0 12px;max-width:60ch;">
+    The reason is the most important part — it's what turns a pile of entries into a clear story.
+    Pick the closest one:
+  </p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Reason</th><th>Use it when…</th></tr></thead>
+      <tbody>
+        <tr><td class="code">Rep changed price</td><td class="ex">The rep decided to change what they'd already quoted.</td></tr>
+        <tr><td class="code">Rep changed quantity / product</td><td class="ex">The rep swapped the sizes, colours, or products on the quote.</td></tr>
+        <tr><td class="code">Customer renegotiated</td><td class="ex">The customer pushed back, so the quote had to change.</td></tr>
+        <tr><td class="code">Price list out of date</td><td class="ex">The price list itself was wrong or old and needs updating.</td></tr>
+        <tr><td class="code">Rep quoted wrong price</td><td class="ex">The rep gave a price that didn't match the price list.</td></tr>
+        <tr><td class="code">Discount approval needed</td><td class="ex">The change is waiting on a discount sign-off.</td></tr>
+        <tr><td class="code">Duplicate / re-request</td><td class="ex">The rep asked for the same thing again that was already done.</td></tr>
+        <tr><td class="code">Other</td><td class="ex">None of the above — add a quick note so we know what it was.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="why">
+    <div class="tag">Why we're doing this</div>
+    <p>Right now the constant quote and price changes create a lot of extra admin, and that's where
+      pricing mistakes creep in. Once we have a few weeks of these entries, management can see
+      <b>exactly which reps, which reasons, and how often</b> — and fix the actual cause instead of
+      guessing. Your entries are the evidence. Accurate beats fancy: a quick, honest tap is all we need.</p>
+  </div>
+
+  <div class="foot">
+    <span>Olympic Paints · Sales Admin</span>
+    <span>Questions? Ask Quintus.</span>
+  </div>
+
+</div>

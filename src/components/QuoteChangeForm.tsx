@@ -129,6 +129,9 @@ export default function QuoteChangeForm() {
               Log Another (new rep)
             </button>
           </div>
+          <a className="qc-help-link" href="/quote-changes-guide.html" target="_blank" rel="noopener noreferrer">
+            How to use this form ↗
+          </a>
         </div>
         <style dangerouslySetInnerHTML={{ __html: css }} />
       </main>
@@ -399,6 +402,8 @@ const css = `
   .qc-thanks-sub { font-size:15px; color:var(--muted); max-width:340px; }
   .qc-thanks-btns { margin-top:22px; width:100%; max-width:320px; display:flex; flex-direction:column; gap:10px; }
   .qc-thanks-btns .qc-btn { width:100%; }
+  .qc-help-link { margin-top:18px; color:var(--muted); font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:13px; text-transform:uppercase; letter-spacing:0.06em; text-decoration:none; border-bottom:1px solid var(--border); padding-bottom:2px; }
+  .qc-help-link:hover { color:var(--gold); border-color:var(--gold); }
 
   @media (max-width:640px) {
     .qc-header { padding:11px 14px; padding-top:calc(11px + env(safe-area-inset-top)); gap:8px; }
