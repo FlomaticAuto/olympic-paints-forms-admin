@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
     event_date:  str(body.event_date) || todayISO(),
     event_type,
     account:     str(body.account),
+    store_dlref: str(body.store_dlref),
     reason_code,
     revision_no,
     note:        str(body.note),
