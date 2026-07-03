@@ -1,9 +1,21 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 type Theme = 'theme-dark' | 'theme-light' | 'theme-navy';
 const THEME_KEY = 'qcl-theme';
 const ADMIN_KEY = 'qcl-admin';
+
+// A store = one delivery point (sub-account). `dlref` (e.g. KM027/17) is the
+// delivery ref; `curef` its parent customer. We search across all delivery points.
+interface Store {
+  id: string;
+  name: string;
+  code: string | null;
+  dlref: string | null;
+  curef: string | null;
+  town: string | null;
+  area: string | null;
+}
 
 // ── Reference data ─────────────────────────────────────────────────────────
 // Sales reps (code + full name). Codes match the KPI dashboard.
@@ -47,6 +59,7 @@ const BLANK = {
   rep_code: '',
   event_type: '' as EventType | '',
   account: '',
+  store_dlref: '' as string | null,
   reason_code: '',
   revision_no: 1,
   note: '',
@@ -76,6 +89,39 @@ export default function QuoteChangeForm() {
   // Revision # only makes sense for a quote revision.
   const showRevision = f.event_type === 'Quote Revision';
 
+  // ── Store (customer / delivery-point) lookup ──────────────────────────────
+  const [storeResults, setStoreResults] = useState<Store[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [manualAccount, setManualAccount] = useState(false); // free-text fallback
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const searchStores = useCallback((q: string) => {
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    if (q.trim().length < 2) { setStoreResults([]); return; }
+    searchTimeout.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await fetch(`/api/stores/search?q=${encodeURIComponent(q)}`);
+        const data = await res.json();
+        setStoreResults(Array.isArray(data) ? data : []);
+      } catch {
+        setStoreResults([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+  }, []);
+
+  function onAccountChange(v: string) {
+    // Typing clears any previously selected store (its dlref no longer applies).
+    setF(p => ({ ...p, account: v, store_dlref: null }));
+    if (!manualAccount) searchStores(v);
+  }
+  function selectStore(s: Store) {
+    setF(p => ({ ...p, account: s.name, store_dlref: s.dlref }));
+    setStoreResults([]);
+  }
+
   async function submit() {
     if (!f.rep_code) { setError('Select which rep this is for.'); return; }
     if (!f.event_type) { setError('Select the event type.'); return; }
@@ -93,6 +139,7 @@ export default function QuoteChangeForm() {
           event_date: eventDate,
           event_type: f.event_type,
           account: f.account,
+          store_dlref: f.store_dlref,
           reason_code: f.reason_code,
           revision_no: showRevision ? f.revision_no : null,
           note: f.note,
@@ -109,6 +156,7 @@ export default function QuoteChangeForm() {
   // Log another — keep rep + date so a batch of the same rep's events is fast.
   function logAnother(keepRep: boolean) {
     setDoneRef(null); setBusy(false); setError(null);
+    setStoreResults([]); setManualAccount(false);
     setF(p => ({ ...BLANK, rep_code: keepRep ? p.rep_code : '' }));
   }
 
@@ -207,12 +255,42 @@ export default function QuoteChangeForm() {
               ))}
             </div>
 
-            {/* Account */}
-            <div className="qc-section-title">Account / Customer</div>
-            <div className="qc-field">
+            {/* Account — store (delivery-point) lookup */}
+            <div className="qc-section-title">
+              Account / Customer
+              <button type="button" className="qc-section-toggle"
+                onClick={() => {
+                  setManualAccount(m => !m);
+                  setStoreResults([]);
+                  setF(p => ({ ...p, store_dlref: null }));
+                }}>
+                {manualAccount ? 'Search list' : 'Type manually'}
+              </button>
+            </div>
+            <div className="qc-field qc-search-field">
               <input className="qc-input" value={f.account} autoComplete="off"
-                placeholder="Customer or account name"
-                onChange={e => set('account', e.target.value)} />
+                placeholder={manualAccount ? 'Type the customer / account name'
+                                            : 'Search by name, ref or town…'}
+                onChange={e => onAccountChange(e.target.value)} />
+
+              {!manualAccount && f.store_dlref && (
+                <p className="qc-ref">Delivery ref: <b>{f.store_dlref}</b> — sub-account captured</p>
+              )}
+              {!manualAccount && searching && <p className="qc-hint">Searching…</p>}
+              {!manualAccount && !searching && storeResults.length > 0 && (
+                <ul className="qc-search-list">
+                  {storeResults.map(s => (
+                    <li key={s.id} className="qc-search-item" onMouseDown={() => selectStore(s)}>
+                      <span className="qc-search-name">{s.name}</span>
+                      {s.dlref && <span className="qc-search-meta">DL {s.dlref}</span>}
+                      {s.town && <span className="qc-search-meta">{s.town}</span>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {!manualAccount && !searching && f.account.trim().length >= 2 && !f.store_dlref && storeResults.length === 0 && (
+                <p className="qc-hint">No match. Tap <b>Type manually</b> to enter it by hand.</p>
+              )}
             </div>
 
             {/* Reason code */}
@@ -351,6 +429,26 @@ const css = `
   .qc-input:focus { outline:none; border-color:var(--gold); box-shadow:0 0 0 3px rgba(246,195,36,0.18); }
   .qc-input-sm { max-width:200px; }
   .qc-textarea { min-height:74px; resize:vertical; line-height:1.5; }
+
+  /* Store lookup */
+  .qc-section-toggle { margin-left:auto; background:transparent; border:0; color:var(--muted); cursor:pointer;
+    font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:11px; text-transform:uppercase;
+    letter-spacing:0.06em; text-decoration:underline; text-underline-offset:3px; padding:2px 0; }
+  .qc-section-toggle:hover { color:var(--gold); }
+  .qc-search-field { position:relative; }
+  .qc-hint { margin:4px 0 0; font-size:12.5px; color:var(--dim); }
+  .qc-ref { margin:5px 0 0; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:12px;
+    letter-spacing:0.03em; color:var(--gold); text-transform:uppercase; }
+  .qc-search-list { list-style:none; margin:4px 0 0; padding:0; background:var(--base); border:1px solid var(--border);
+    border-radius:8px; overflow:hidden; position:absolute; left:0; right:0; top:100%; z-index:30;
+    box-shadow:0 6px 20px rgba(0,0,0,0.28); max-height:280px; overflow-y:auto; }
+  .qc-search-item { display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; padding:12px 14px; cursor:pointer;
+    border-bottom:1px solid var(--border); }
+  .qc-search-item:last-child { border-bottom:0; }
+  .qc-search-item:hover { background:var(--sunken); }
+  .qc-search-name { font-size:14px; font-weight:600; color:var(--text); }
+  .qc-search-meta { font-family:'Barlow Condensed',sans-serif; font-size:10px; color:var(--dim);
+    text-transform:uppercase; letter-spacing:0.06em; }
 
   /* Choice grids */
   .qc-grid { display:grid; gap:9px; }
