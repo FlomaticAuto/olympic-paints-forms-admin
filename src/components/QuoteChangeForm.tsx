@@ -194,7 +194,10 @@ export default function QuoteChangeForm() {
         {/* Header */}
         <header className="qc-header">
           <div className="qc-brand">
-            <span className="qc-disc" aria-hidden="true" />
+            <span className="qc-disc">
+              <img src="https://flomaticauto.github.io/olympic-paints-clocking/logo.jpg"
+                alt="Olympic Paints" width={34} height={34} />
+            </span>
             <div className="qc-brand-text">
               <span className="qc-brand-name">Olympic Paints</span>
               <span className="qc-brand-sub">Quote &amp; Price Change Log</span>
@@ -386,7 +389,8 @@ const css = `
     padding-top:calc(12px + env(safe-area-inset-top));
   }
   .qc-brand { display:flex; align-items:center; gap:11px; }
-  .qc-disc { width:34px; height:34px; border-radius:50%; background:var(--gold); flex-shrink:0; box-shadow:0 2px 8px rgba(246,195,36,0.25); }
+  .qc-disc { width:34px; height:34px; border-radius:50%; overflow:hidden; flex-shrink:0; box-shadow:0 2px 8px rgba(0,0,0,0.18); }
+  .qc-disc img { display:block; width:100%; height:100%; object-fit:cover; }
   .qc-brand-text { display:flex; flex-direction:column; line-height:1; }
   .qc-brand-name { font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:20px; text-transform:uppercase; letter-spacing:0.02em; color:var(--text); }
   .qc-brand-sub { font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:0.12em; color:var(--gold); margin-top:2px; }
