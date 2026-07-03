@@ -214,12 +214,28 @@ export default function StoreVisitBookingForm({ formId }: Props) {
         setBusy(false);
         return;
       }
-      // Fire-and-forget: append to Booking_Audit_Log.xlsx via local webhook
-      fetch('/api/booking-audit-log', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ data }),
-      }).catch(() => { /* non-fatal */ });
+      // Critical: this writes the booking to store_visit_bookings, which feeds
+      // the merchandising calendar (Outlook invite) and the on-site capture flow.
+      // It MUST succeed — a silent failure here means the visit never reaches the
+      // calendar even though the rep saw "Visit Booked". Await it and gate success.
+      // (The Excel audit-log webhook is fired best-effort inside this same route.)
+      try {
+        const auditRes = await fetch('/api/booking-audit-log', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ data }),
+        });
+        if (!auditRes.ok) {
+          const aj = await auditRes.json().catch(() => ({}));
+          setError(aj.error ?? 'Booking could not be saved to the calendar. Please try again.');
+          setBusy(false);
+          return;
+        }
+      } catch {
+        setError('Network error saving the booking to the calendar. Please try again.');
+        setBusy(false);
+        return;
+      }
 
       // If manual address was entered, patch the store record silently
       if (!storeHasAddress && manualAddress.trim()) {
