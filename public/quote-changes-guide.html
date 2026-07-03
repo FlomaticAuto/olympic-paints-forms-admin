@@ -14,8 +14,9 @@
 
   /* Header */
   .head{display:flex;align-items:center;gap:14px;padding-bottom:18px;border-bottom:2px solid var(--ink);}
-  .disc{width:42px;height:42px;border-radius:50%;background:var(--gold);flex-shrink:0;
-    box-shadow:0 2px 8px rgba(230,167,0,.3);}
+  .disc{width:42px;height:42px;border-radius:50%;overflow:hidden;flex-shrink:0;
+    box-shadow:0 2px 8px rgba(0,0,0,.2);}
+  .disc img{display:block;width:100%;height:100%;object-fit:cover;}
   .head h1{font-family:var(--disp);font-weight:900;font-size:29px;line-height:1;margin:0;
     text-transform:uppercase;letter-spacing:.01em;text-wrap:balance;}
   .head .eyebrow{font-family:var(--disp);font-weight:700;font-size:12px;letter-spacing:.16em;
@@ -92,7 +93,7 @@
 <div class="sheet">
 
   <div class="head">
-    <div class="disc"></div>
+    <div class="disc"><img src="https://flomaticauto.github.io/olympic-paints-clocking/logo.jpg" alt="Olympic Paints" width="42" height="42"/></div>
     <div>
       <div class="eyebrow">Sales Admin · Quick Guide</div>
       <h1>The Quote &amp; Price Change Log</h1>
