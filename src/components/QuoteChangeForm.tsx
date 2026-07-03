@@ -15,8 +15,8 @@ const REPS: { code: string; name: string }[] = [
   { code: 'NP', name: 'Nikhil Panchal' },
 ];
 
-// Who is logging the event. Swap these for the real sales-admin names.
-const ADMINS = ['Sales Admin'];
+// Who is logging the event — the sales-admin team.
+const ADMINS = ['Aziza', 'Emeshnee'];
 
 const EVENT_TYPES = [
   'New Quote',
