@@ -19,12 +19,6 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             Cockpit
           </Link>
           <Link
-            href="/admin/resin-leads"
-            style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-secondary)', textDecoration: 'none' }}
-          >
-            Resin CRM
-          </Link>
-          <Link
             href="/admin/forms"
             style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-secondary)', textDecoration: 'none' }}
           >

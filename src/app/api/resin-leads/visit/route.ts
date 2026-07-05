@@ -2,6 +2,28 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
 import { corsHeaders } from '@/lib/cors';
 
+const VISIT_COLS =
+  'id,visit_ref,lead_id,lead_ref,company,rep,visit_date,distance,outcome,next_follow_up,products,total,notes,created_at';
+
+// GET /api/resin-leads/visit — list all visits (the "Leads Visited" view).
+export async function GET(req: NextRequest) {
+  const origin = req.headers.get('origin');
+  const db = createServerClient();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (db as any)
+    .from('resin_lead_visits')
+    .select(VISIT_COLS)
+    .order('visit_date', { ascending: false });
+
+  if (error) {
+    console.error('[resin-leads/visit GET]', error);
+    return NextResponse.json({ error: 'Load failed' }, { status: 500, headers: corsHeaders(origin) });
+  }
+
+  return NextResponse.json(data ?? [], { headers: corsHeaders(origin) });
+}
+
 // POST /api/resin-leads/visit — log a visit against an existing lead.
 // Body: { lead_id, lead_ref, company, rep, visit_date, distance, outcome,
 //         next_follow_up, notes, photos: string[], products: [line...] }
@@ -116,7 +138,7 @@ export async function POST(req: NextRequest) {
 export async function OPTIONS(req: NextRequest) {
   return new NextResponse(null, {
     status: 204,
-    headers: { ...corsHeaders(req.headers.get('origin')), 'Access-Control-Allow-Methods': 'POST, OPTIONS' },
+    headers: { ...corsHeaders(req.headers.get('origin')), 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' },
   });
 }
 

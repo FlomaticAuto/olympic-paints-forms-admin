@@ -2,6 +2,28 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
 import { corsHeaders } from '@/lib/cors';
 
+const LEAD_COLS =
+  'id,lead_ref,company,contact_person,phone,mobile,email,lead_source,lead_status,distance,street,city,province,postal_code,rep,notes,created_at';
+
+// GET /api/resin-leads/lead — list all leads (the "Leads Loaded" view).
+export async function GET(req: NextRequest) {
+  const origin = req.headers.get('origin');
+  const db = createServerClient();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (db as any)
+    .from('resin_leads')
+    .select(LEAD_COLS)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('[resin-leads/lead GET]', error);
+    return NextResponse.json({ error: 'Load failed' }, { status: 500, headers: corsHeaders(origin) });
+  }
+
+  return NextResponse.json(data ?? [], { headers: corsHeaders(origin) });
+}
+
 // POST /api/resin-leads/lead  — create a new lead (the "Capture Lead" mode).
 export async function POST(req: NextRequest) {
   const origin = req.headers.get('origin');
@@ -68,7 +90,7 @@ export async function POST(req: NextRequest) {
 export async function OPTIONS(req: NextRequest) {
   return new NextResponse(null, {
     status: 204,
-    headers: { ...corsHeaders(req.headers.get('origin')), 'Access-Control-Allow-Methods': 'POST, OPTIONS' },
+    headers: { ...corsHeaders(req.headers.get('origin')), 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' },
   });
 }
 

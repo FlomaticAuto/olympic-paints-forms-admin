@@ -1,6 +1,6 @@
+import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
-import AdminShell from '@/components/AdminShell';
-import ResinCrmClient from './ResinCrmClient';
+import { corsHeaders } from '@/lib/cors';
 import {
   buildCompetitorPricing,
   buildCompetitorFootprint,
@@ -14,12 +14,6 @@ import type {
   ResinSupplierPrice,
 } from '@/lib/resinCrm/types';
 
-export const dynamic = 'force-dynamic';
-
-export const metadata = {
-  title: 'Resin CRM — Olympic Paints',
-};
-
 const LEAD_COLS =
   'id,lead_ref,company,contact_person,phone,mobile,email,lead_source,lead_status,distance,street,city,province,postal_code,rep,notes,created_at';
 const VISIT_COLS =
@@ -28,9 +22,11 @@ const PRODUCT_COLS = 'id,code,name,local_price,long_price,category,is_active,sor
 const PRICE_COLS =
   'id,supplier_id,supplier_name,product_id,product_name,price,distance,lead_id,lead_ref,visit_ref,captured_at';
 
-// Server Component — fetches directly with the service_role client.
-// No API round-trip needed; middleware already guards this route.
-export default async function ResinCrmPage() {
+// GET /api/resin-leads/intel — the "Assessment & Intel" view: competitor
+// pricing, competitor footprint, recent field notes, and stat tiles, built
+// from the same resinCrm/intelligence.ts aggregation used previously.
+export async function GET(req: NextRequest) {
+  const origin = req.headers.get('origin');
   const db = createServerClient();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -43,15 +39,13 @@ export default async function ResinCrmPage() {
     anyDb.from('resin_supplier_prices').select(PRICE_COLS).order('captured_at', { ascending: true }),
   ]);
 
-  // Track WHICH dataset failed, not just that something did — so the client
-  // can tell a genuinely-empty section apart from one whose fetch broke.
   const loadErrors: string[] = [];
   if (leadsRes.error) loadErrors.push('Leads');
   if (visitsRes.error) loadErrors.push('Visits');
   if (productsRes.error) loadErrors.push('Products');
   if (pricesRes.error) loadErrors.push('Competitor Prices');
   if (loadErrors.length) {
-    console.error('[admin/resin-leads]', {
+    console.error('[resin-leads/intel]', {
       failed: loadErrors,
       errors: [leadsRes.error, visitsRes.error, productsRes.error, pricesRes.error].filter(Boolean),
     });
@@ -62,22 +56,18 @@ export default async function ResinCrmPage() {
   const products = (productsRes.data ?? []) as ResinProduct[];
   const prices = (pricesRes.data ?? []) as ResinSupplierPrice[];
 
-  const competitorPricing = buildCompetitorPricing(prices, products);
-  const competitorFootprint = buildCompetitorFootprint(prices, leads);
-  const fieldNotes = buildFieldNotes(visits);
-  const stats = buildStatTiles(leads, visits, prices);
+  return NextResponse.json({
+    competitorPricing: buildCompetitorPricing(prices, products),
+    competitorFootprint: buildCompetitorFootprint(prices, leads),
+    fieldNotes: buildFieldNotes(visits),
+    stats: buildStatTiles(leads, visits, prices),
+    loadErrors,
+  }, { headers: corsHeaders(origin) });
+}
 
-  return (
-    <AdminShell>
-      <ResinCrmClient
-        leads={leads}
-        visits={visits}
-        competitorPricing={competitorPricing}
-        competitorFootprint={competitorFootprint}
-        fieldNotes={fieldNotes}
-        stats={stats}
-        loadErrors={loadErrors}
-      />
-    </AdminShell>
-  );
+export async function OPTIONS(req: NextRequest) {
+  return new NextResponse(null, {
+    status: 204,
+    headers: { ...corsHeaders(req.headers.get('origin')), 'Access-Control-Allow-Methods': 'GET, OPTIONS' },
+  });
 }

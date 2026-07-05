@@ -1,6 +1,9 @@
 'use client';
 import { useState, useEffect, useRef, useCallback, ChangeEvent } from 'react';
 import { LEAD_STATUSES, VISIT_OUTCOMES } from '@/lib/resinCrm/types';
+import ResinLeadsListView from '@/components/resin-leads/ResinLeadsListView';
+import ResinVisitsListView from '@/components/resin-leads/ResinVisitsListView';
+import ResinIntelView from '@/components/resin-leads/ResinIntelView';
 
 type Distance = 'Local' | 'Long Distance';
 type Theme = 'theme-dark' | 'theme-light' | 'theme-navy';
@@ -76,7 +79,7 @@ function fmtR(n: number): string { return 'R' + n.toFixed(2); }
 export default function ResinLeadForm() {
   const [theme, setThemeState] = useState<Theme>('theme-light');
   const [rep, setRepState] = useState('Kim Williams');
-  const [mode, setMode] = useState<'capture' | 'visit'>('capture');
+  const [mode, setMode] = useState<'capture' | 'visit' | 'leads' | 'visits' | 'intel'>('capture');
 
   useEffect(() => {
     const t = window.localStorage.getItem(THEME_KEY);
@@ -378,6 +381,12 @@ export default function ResinLeadForm() {
               onClick={() => { setMode('capture'); setError(null); }}>Capture Lead</button>
             <button type="button" className={`rl-mode-btn${mode === 'visit' ? ' is-active' : ''}`}
               onClick={() => { setMode('visit'); setError(null); }}>Log Visit</button>
+            <button type="button" className={`rl-mode-btn${mode === 'leads' ? ' is-active' : ''}`}
+              onClick={() => { setMode('leads'); setError(null); }}>Leads</button>
+            <button type="button" className={`rl-mode-btn${mode === 'visits' ? ' is-active' : ''}`}
+              onClick={() => { setMode('visits'); setError(null); }}>Visits</button>
+            <button type="button" className={`rl-mode-btn${mode === 'intel' ? ' is-active' : ''}`}
+              onClick={() => { setMode('intel'); setError(null); }}>Intel</button>
           </div>
         </div>
 
@@ -713,6 +722,15 @@ export default function ResinLeadForm() {
               {!lead && error && <p className="rl-error">{error}</p>}
             </div>
           )}
+
+          {/* ── LEADS LOADED ── */}
+          {mode === 'leads' && <ResinLeadsListView />}
+
+          {/* ── LEADS VISITED ── */}
+          {mode === 'visits' && <ResinVisitsListView />}
+
+          {/* ── ASSESSMENT & INTEL ── */}
+          {mode === 'intel' && <ResinIntelView />}
         </div>
       </div>
       <style dangerouslySetInnerHTML={{ __html: css }} />
@@ -786,9 +804,10 @@ const css = `
   }
   .rl-rep-field { display:flex; flex-direction:column; gap:5px; }
   .rl-mini-label { font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:10px; text-transform:uppercase; letter-spacing:0.12em; color:var(--dim); }
-  .rl-mode-toggle { display:flex; gap:4px; background:var(--base); border:1px solid var(--border); border-radius:10px; padding:4px; margin-left:auto; }
+  .rl-mode-toggle { display:flex; gap:4px; background:var(--base); border:1px solid var(--border); border-radius:10px; padding:4px; margin-left:auto; overflow-x:auto; -webkit-overflow-scrolling:touch; }
   .rl-mode-btn {
-    padding:10px 20px; min-height:44px; background:transparent; border:0; color:var(--muted); border-radius:7px;
+    flex:0 0 auto; white-space:nowrap;
+    padding:10px 18px; min-height:44px; background:transparent; border:0; color:var(--muted); border-radius:7px;
     font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:13px;
     text-transform:uppercase; letter-spacing:0.06em; cursor:pointer; transition:.12s;
   }
@@ -933,6 +952,59 @@ const css = `
   .rl-thanks-btns { margin-top:20px; width:100%; max-width:320px; }
   .rl-thanks-btns .rl-btn { width:100%; }
 
+  /* Generic status/outcome pills (Leads / Visits / Intel views) */
+  .rl-pill-success { background:rgba(45,140,122,0.18); color:#79d4c2; border:1px solid rgba(45,140,122,0.4); }
+  .rl-pill-warning { background:rgba(246,195,36,0.16); color:var(--gold); border:1px solid rgba(246,195,36,0.4); }
+  .rl-pill-danger  { background:var(--danger-bg); color:var(--danger-fg); border:1px solid var(--danger-bd); }
+  .rl-pill-info    { background:var(--info-bg); color:var(--info-fg); border:1px solid var(--info-bd); }
+  .rl-pill-neutral { background:var(--sunken); color:var(--muted); border:1px solid var(--border); }
+
+  /* Report toolbar (search + filters) shared by Leads / Visits views */
+  .rl-report-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .rl-report-count { font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:12px; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted); }
+  .rl-report-filters { display:flex; gap:8px; flex-wrap:wrap; flex:1; }
+  .rl-report-filters .rl-input { min-width:150px; flex:1; }
+
+  /* Empty / loading state */
+  .rl-empty { text-align:center; padding:44px 16px; color:var(--muted); }
+  .rl-empty-icon { font-size:32px; margin-bottom:10px; }
+  .rl-empty-title { font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:15px; text-transform:uppercase; color:var(--text); margin-bottom:4px; }
+  .rl-empty-body { font-size:13px; color:var(--muted); }
+
+  /* Assessment & Intel: stat strip */
+  .rl-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; }
+  .rl-stat { background:var(--section-bg); border:1px solid var(--border); border-radius:10px; padding:14px 16px; display:flex; flex-direction:column; gap:2px; }
+  .rl-stat-num { font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:28px; color:var(--gold); line-height:1; }
+  .rl-stat-label { font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); }
+
+  /* Assessment & Intel: competitor pricing "Us vs Them" cards */
+  .rl-compare-card { background:var(--section-bg); border:1px solid var(--border); border-radius:10px; padding:14px 16px; display:flex; flex-direction:column; gap:8px; }
+  .rl-compare-head { display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+  .rl-compare-supplier { font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:16px; text-transform:uppercase; color:var(--text); }
+  .rl-compare-product { font-size:14px; color:var(--muted); }
+  .rl-compare-nums { display:flex; gap:24px; align-items:baseline; flex-wrap:wrap; }
+  .rl-compare-num-l { font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--dim); margin-right:6px; }
+  .rl-compare-num-v { font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:20px; color:var(--text); }
+  .rl-compare-sub { font-size:11px; color:var(--dim); }
+
+  /* Assessment & Intel: competitor footprint cards */
+  .rl-footprint-card { background:var(--section-bg); border:1px solid var(--border); border-radius:10px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; }
+  .rl-footprint-head { display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+  .rl-footprint-supplier { font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:16px; text-transform:uppercase; color:var(--text); }
+  .rl-footprint-count { font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:12px; color:var(--gold); white-space:nowrap; }
+  .rl-footprint-companies { font-size:14px; color:var(--info-fg); }
+  .rl-footprint-products { font-size:12px; color:var(--dim); }
+
+  /* Assessment & Intel: field-note cards */
+  .rl-note-card { background:var(--section-bg); border:1px solid var(--border); border-radius:10px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; }
+  .rl-note-head { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .rl-note-company { font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:14px; color:var(--text); }
+  .rl-note-meta { font-size:11px; color:var(--dim); margin-left:auto; }
+  .rl-note-body { font-size:13px; color:var(--muted); line-height:1.5; white-space:pre-wrap; }
+  .rl-note-mentions { list-style:none; margin-top:6px; padding-top:6px; border-top:1px dashed var(--border); display:flex; flex-direction:column; gap:2px; }
+  .rl-note-mentions li { font-size:12px; color:var(--dim); }
+  .rl-note-mentions strong { color:var(--muted); }
+
   @media (max-width:640px) {
     .rl-header { padding:11px 14px; padding-top:calc(11px + env(safe-area-inset-top)); gap:8px; }
     .rl-brand-name { font-size:18px; }
@@ -948,7 +1020,10 @@ const css = `
     .rl-lead-grid { grid-template-columns:1fr; }
     .rl-item-grid { grid-template-columns:1fr 1fr; }
     .rl-mode-toggle { margin-left:0; width:100%; }
-    .rl-mode-btn { flex:1; padding:12px 8px; }
+    .rl-mode-btn { padding:12px 14px; }
+    .rl-report-filters .rl-input { min-width:0; }
+    .rl-stats { grid-template-columns:1fr 1fr; }
+    .rl-compare-nums { gap:16px; }
     input, select, textarea, .rl-btn { font-size:16px; }
   }
   /* Full-screen app feel when launched from the home screen */
