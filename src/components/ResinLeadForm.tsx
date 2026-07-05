@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef, useCallback, ChangeEvent } from 'react';
+import { LEAD_STATUSES, VISIT_OUTCOMES } from '@/lib/resinCrm/types';
 
 type Distance = 'Local' | 'Long Distance';
 type Theme = 'theme-dark' | 'theme-light' | 'theme-navy';
@@ -8,10 +9,8 @@ const REP_KEY   = 'rl-rep';
 
 const REPS = ['Kim Williams'];
 const LEAD_SOURCES = ['Cold Call', 'Referral', 'Website', 'Trade Show / Expo', 'Existing Customer', 'Email Campaign', 'Walk-in', 'Social Media', 'Other'];
-const LEAD_STATUSES = ['New', 'Contacted', 'Qualified', 'Quoted', 'Negotiating', 'Won', 'Lost'];
 const DISTANCES: Distance[] = ['Local', 'Long Distance'];
 const PROVINCES = ['Eastern Cape', 'Free State', 'Gauteng', 'KwaZulu-Natal', 'Limpopo', 'Mpumalanga', 'North West', 'Northern Cape', 'Western Cape'];
-const VISIT_OUTCOMES = ['Introductory Meeting', 'Sample Requested', 'Quoted', 'Negotiating', 'Order Placed', 'Follow-up Required', 'Not Interested', 'Won', 'Lost'];
 
 interface Lead {
   id: string;

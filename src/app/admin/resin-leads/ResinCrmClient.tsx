@@ -8,6 +8,7 @@ import type {
   FieldNote,
   StatTiles,
 } from '@/lib/resinCrm/types';
+import { LEAD_STATUSES, VISIT_OUTCOMES } from '@/lib/resinCrm/types';
 
 interface Props {
   leads: ResinLead[];
@@ -16,7 +17,7 @@ interface Props {
   competitorFootprint: CompetitorFootprintRow[];
   fieldNotes: FieldNote[];
   stats: StatTiles;
-  loadError: boolean;
+  loadErrors: string[];
 }
 
 type Tab = 'leads' | 'visits' | 'intel';
@@ -30,32 +31,28 @@ function fmtDate(iso: string | null): string {
   if (isNaN(d.getTime())) return iso;
   return d.toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' });
 }
-function statusBadgeClass(status: string | null): string {
-  switch (status) {
-    case 'Won': return 'badge badge-success';
-    case 'Lost': return 'badge rc-badge-danger';
-    case 'Negotiating': return 'badge badge-warning';
-    case 'Quoted':
-    case 'Qualified': return 'badge rc-badge-info';
-    default: return 'badge badge-neutral';
-  }
-}
-function outcomeBadgeClass(outcome: string | null): string {
-  switch (outcome) {
-    case 'Won':
-    case 'Order Placed': return 'badge badge-success';
-    case 'Lost':
-    case 'Not Interested': return 'badge rc-badge-danger';
-    case 'Negotiating':
-    case 'Quoted': return 'badge badge-warning';
-    default: return 'badge badge-neutral';
-  }
+// Single shared map for both lead-status and visit-outcome badges — the two
+// vocabularies overlap (Won, Lost, Negotiating, Quoted) and previously drifted
+// (e.g. "Quoted" was styled differently in each) since they were hardcoded twice.
+const STAGE_BADGE_CLASS: Record<string, string> = {
+  Won: 'badge badge-success',
+  'Order Placed': 'badge badge-success',
+  Lost: 'badge rc-badge-danger',
+  'Not Interested': 'badge rc-badge-danger',
+  Negotiating: 'badge badge-warning',
+  Quoted: 'badge rc-badge-info',
+  Qualified: 'badge rc-badge-info',
+};
+function stageBadgeClass(value: string | null): string {
+  return (value && STAGE_BADGE_CLASS[value]) || 'badge badge-neutral';
 }
 function distanceBadgeClass(distance: string | null): string {
   return distance === 'Long Distance' ? 'badge badge-warning' : 'badge badge-success';
 }
-function gapBadge(gapPct: number | null): { cls: string; text: string } {
-  if (gapPct == null) return { cls: 'badge badge-neutral', text: 'No Olympic price on file' };
+function gapBadge(ourPrice: number | null, gapPct: number | null): { cls: string; text: string } {
+  if (ourPrice == null) return { cls: 'badge badge-neutral', text: 'No Olympic price on file' };
+  if (ourPrice === 0) return { cls: 'badge badge-neutral', text: 'Olympic price is R0.00 — gap n/a' };
+  if (gapPct == null) return { cls: 'badge badge-neutral', text: '—' };
   if (gapPct > 0) return { cls: 'badge badge-success', text: `We're ${gapPct.toFixed(1)}% cheaper` };
   if (gapPct < 0) return { cls: 'badge rc-badge-danger', text: `We're ${Math.abs(gapPct).toFixed(1)}% pricier` };
   return { cls: 'badge badge-neutral', text: 'At parity' };
@@ -64,17 +61,28 @@ function chipList(items: string[], max = 4): string {
   if (items.length <= max) return items.join(', ');
   return `${items.slice(0, max).join(', ')} +${items.length - max} more`;
 }
+// Canonical enum values first (so every real status/outcome is always
+// filterable, even before any lead/visit happens to use it), then any extra
+// values found in the data that predate/exceed the canonical list.
+function optionsWithCanonical(canonical: readonly string[], found: (string | null)[]): string[] {
+  const canonicalSet = new Set<string>(canonical);
+  const extra = Array.from(new Set(found.filter((v): v is string => !!v && !canonicalSet.has(v)))).sort();
+  return ['All', ...canonical, ...extra];
+}
 
 export default function ResinCrmClient({
-  leads, visits, competitorPricing, competitorFootprint, fieldNotes, stats, loadError,
+  leads, visits, competitorPricing, competitorFootprint, fieldNotes, stats, loadErrors,
 }: Props) {
   const [tab, setTab] = useState<Tab>('leads');
+  const leadsFailedToLoad = loadErrors.includes('Leads');
+  const visitsFailedToLoad = loadErrors.includes('Visits');
+  const pricesFailedToLoad = loadErrors.includes('Competitor Prices');
 
   // ── Leads tab filters ──────────────────────────────────────────────────
   const [leadQuery, setLeadQuery] = useState('');
   const [leadStatus, setLeadStatus] = useState('All');
   const leadStatuses = useMemo(
-    () => ['All', ...Array.from(new Set(leads.map((l) => l.lead_status).filter(Boolean) as string[]))],
+    () => optionsWithCanonical(LEAD_STATUSES, leads.map((l) => l.lead_status)),
     [leads],
   );
   const filteredLeads = useMemo(() => {
@@ -93,7 +101,7 @@ export default function ResinCrmClient({
   const [visitOutcome, setVisitOutcome] = useState('All');
   const [visitRep, setVisitRep] = useState('All');
   const visitOutcomes = useMemo(
-    () => ['All', ...Array.from(new Set(visits.map((v) => v.outcome).filter(Boolean) as string[]))],
+    () => optionsWithCanonical(VISIT_OUTCOMES, visits.map((v) => v.outcome)),
     [visits],
   );
   const visitReps = useMemo(
@@ -121,8 +129,8 @@ export default function ResinCrmClient({
         <p>Leads loaded, visits logged, and competitive intelligence gathered by reps in the field.</p>
       </div>
 
-      {loadError && (
-        <div className="rc-load-err">Some data failed to load — figures below may be incomplete.</div>
+      {loadErrors.length > 0 && (
+        <div className="rc-load-err">Failed to load: {loadErrors.join(', ')} — the sections below may be incomplete or stale, not necessarily empty.</div>
       )}
 
       <div className="rc-tabs" role="tablist">
@@ -152,9 +160,11 @@ export default function ResinCrmClient({
           </div>
           {filteredLeads.length === 0 ? (
             <div className="empty-state">
-              <div className="empty-state-icon">📋</div>
-              <div className="empty-state-title">No leads match</div>
-              <div className="empty-state-body">Try clearing the search or status filter.</div>
+              <div className="empty-state-icon">{leadsFailedToLoad ? '⚠️' : '📋'}</div>
+              <div className="empty-state-title">{leadsFailedToLoad ? "Couldn't load leads" : 'No leads match'}</div>
+              <div className="empty-state-body">
+                {leadsFailedToLoad ? 'The leads fetch failed — try refreshing the page.' : 'Try clearing the search or status filter.'}
+              </div>
             </div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
@@ -178,7 +188,7 @@ export default function ResinCrmClient({
                           <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{l.mobile || l.phone}</div>
                         )}
                       </td>
-                      <td><span className={statusBadgeClass(l.lead_status)}>{l.lead_status ?? 'New'}</span></td>
+                      <td><span className={stageBadgeClass(l.lead_status)}>{l.lead_status ?? 'New'}</span></td>
                       <td><span className={distanceBadgeClass(l.distance)}>{l.distance}</span></td>
                       <td>{[l.city, l.province].filter(Boolean).join(', ') || '—'}</td>
                       <td>{l.rep ?? '—'}</td>
@@ -211,9 +221,11 @@ export default function ResinCrmClient({
           </div>
           {filteredVisits.length === 0 ? (
             <div className="empty-state">
-              <div className="empty-state-icon">🚗</div>
-              <div className="empty-state-title">No visits match</div>
-              <div className="empty-state-body">Try clearing the search or filters.</div>
+              <div className="empty-state-icon">{visitsFailedToLoad ? '⚠️' : '🚗'}</div>
+              <div className="empty-state-title">{visitsFailedToLoad ? "Couldn't load visits" : 'No visits match'}</div>
+              <div className="empty-state-body">
+                {visitsFailedToLoad ? 'The visits fetch failed — try refreshing the page.' : 'Try clearing the search or filters.'}
+              </div>
             </div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
@@ -233,7 +245,7 @@ export default function ResinCrmClient({
                         <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{v.visit_ref}</div>
                       </td>
                       <td>{v.rep ?? '—'}</td>
-                      <td><span className={outcomeBadgeClass(v.outcome)}>{v.outcome ?? '—'}</span></td>
+                      <td><span className={stageBadgeClass(v.outcome)}>{v.outcome ?? '—'}</span></td>
                       <td>{v.products?.length ?? 0}</td>
                       <td style={{ textAlign: 'right' }}>{fmtR(v.total)}</td>
                       <td style={{ whiteSpace: 'nowrap' }}>{fmtDate(v.next_follow_up)}</td>
@@ -261,28 +273,38 @@ export default function ResinCrmClient({
             <p className="rc-section-sub">What competitors are charging, per product, compared to Olympic&apos;s own list price — built from &quot;Current Supplier&quot; entries reps capture on Log Visit.</p>
             {competitorPricing.length === 0 ? (
               <div className="empty-state">
-                <div className="empty-state-icon">💰</div>
-                <div className="empty-state-title">No competitor prices captured yet</div>
-                <div className="empty-state-body">These appear once reps log a &quot;Current Supplier&quot; and price on a visit.</div>
+                <div className="empty-state-icon">{pricesFailedToLoad ? '⚠️' : '💰'}</div>
+                <div className="empty-state-title">{pricesFailedToLoad ? "Couldn't load competitor prices" : 'No competitor prices captured yet'}</div>
+                <div className="empty-state-body">
+                  {pricesFailedToLoad
+                    ? 'The competitor-price fetch failed — try refreshing the page.'
+                    : 'These appear once reps log a "Current Supplier" and price on a visit.'}
+                </div>
               </div>
             ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table className="admin-table">
                   <thead>
                     <tr>
-                      <th>Competitor</th><th>Product</th><th style={{ textAlign: 'right' }}>Olympic Price</th>
+                      <th>Competitor</th><th>Product</th><th>Distance</th><th style={{ textAlign: 'right' }}>Olympic Price</th>
                       <th style={{ textAlign: 'right' }}>Their Last</th><th style={{ textAlign: 'right' }}>Their Avg (Min–Max)</th>
                       <th>Price Gap</th><th style={{ textAlign: 'right' }}>Samples</th><th>Last Captured</th>
                     </tr>
                   </thead>
                   <tbody>
                     {competitorPricing.map((r) => {
-                      const gap = gapBadge(r.gapPct);
+                      const gap = gapBadge(r.ourPrice, r.gapPct);
                       return (
-                        <tr key={`${r.supplier}|${r.product}`}>
+                        <tr key={`${r.supplier}|${r.product}|${r.distance}`}>
                           <td style={{ fontWeight: 600 }}>{r.supplier}</td>
                           <td>{r.product}</td>
-                          <td style={{ textAlign: 'right' }}>{fmtR(r.ourPrice)}</td>
+                          <td><span className={distanceBadgeClass(r.distance)}>{r.distance ?? 'Unknown'}</span></td>
+                          <td style={{ textAlign: 'right' }}>
+                            {fmtR(r.ourPrice)}
+                            {r.ourProductActive === false && (
+                              <div style={{ fontSize: 10, color: 'var(--color-text-tertiary)' }}>Discontinued</div>
+                            )}
+                          </td>
                           <td style={{ textAlign: 'right' }}>{fmtR(r.last)}</td>
                           <td style={{ textAlign: 'right' }}>{fmtR(r.avg)} ({fmtR(r.min)}–{fmtR(r.max)})</td>
                           <td><span className={gap.cls}>{gap.text}</span></td>
@@ -302,9 +324,13 @@ export default function ResinCrmClient({
             <p className="rc-section-sub">Which companies each competitor is currently servicing, based on visits where a rep recorded who supplies that prospect today.</p>
             {competitorFootprint.length === 0 ? (
               <div className="empty-state">
-                <div className="empty-state-icon">🗺️</div>
-                <div className="empty-state-title">No competitor footprint yet</div>
-                <div className="empty-state-body">This builds up as reps capture current suppliers during visits.</div>
+                <div className="empty-state-icon">{pricesFailedToLoad ? '⚠️' : '🗺️'}</div>
+                <div className="empty-state-title">{pricesFailedToLoad ? "Couldn't load competitor intel" : 'No competitor footprint yet'}</div>
+                <div className="empty-state-body">
+                  {pricesFailedToLoad
+                    ? 'The competitor-price fetch failed — try refreshing the page.'
+                    : 'This builds up as reps capture current suppliers during visits.'}
+                </div>
               </div>
             ) : (
               <div style={{ overflowX: 'auto' }}>
@@ -336,9 +362,11 @@ export default function ResinCrmClient({
             <p className="rc-section-sub">The latest visit notes from reps, most recent first.</p>
             {fieldNotes.length === 0 ? (
               <div className="empty-state">
-                <div className="empty-state-icon">📝</div>
-                <div className="empty-state-title">No field notes yet</div>
-                <div className="empty-state-body">Notes typed on Log Visit will show up here.</div>
+                <div className="empty-state-icon">{visitsFailedToLoad ? '⚠️' : '📝'}</div>
+                <div className="empty-state-title">{visitsFailedToLoad ? "Couldn't load field notes" : 'No field notes yet'}</div>
+                <div className="empty-state-body">
+                  {visitsFailedToLoad ? 'The visits fetch failed — try refreshing the page.' : 'Notes typed on Log Visit will show up here.'}
+                </div>
               </div>
             ) : (
               <div className="rc-notes">
@@ -346,7 +374,7 @@ export default function ResinCrmClient({
                   <div key={n.visitId} className="rc-note">
                     <div className="rc-note-head">
                       <span className="rc-note-company">{n.company}</span>
-                      <span className={outcomeBadgeClass(n.outcome)}>{n.outcome ?? '—'}</span>
+                      <span className={stageBadgeClass(n.outcome)}>{n.outcome ?? '—'}</span>
                       <span className="rc-note-meta">{n.rep ?? 'Unknown rep'} · {fmtDate(n.visitDate)}</span>
                     </div>
                     <p className="rc-note-body">{n.notes}</p>

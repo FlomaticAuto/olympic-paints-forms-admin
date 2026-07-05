@@ -19,13 +19,14 @@ const norm = (s: string | null | undefined): string => (s ?? '').trim().toLowerC
 interface PriceAcc {
   supplier: string;   // first-seen casing, for display
   product: string;    // first-seen casing, for display
+  distance: string | null; // the group's distance tier — same for every row in the bucket
+  productId: string | null; // first-seen product_id, preferred over name matching
   sum: number;
   count: number;
   min: number;
   max: number;
   last: number;
   lastAt: string;
-  lastDistance: string | null;
 }
 
 export function buildCompetitorPricing(
@@ -33,12 +34,17 @@ export function buildCompetitorPricing(
   products: ResinProduct[],
 ): CompetitorPriceRow[] {
   const productByName = new Map<string, ResinProduct>();
+  const productById = new Map<string, ResinProduct>();
   for (const p of products) {
     if (p.name) productByName.set(norm(p.name), p);
+    productById.set(p.id, p);
   }
 
-  // prices should already be ordered ascending by captured_at by the caller,
-  // so "last" naturally reflects the most recent capture as we iterate.
+  // Grouped by (supplier, product, distance) — Local and Long Distance prices
+  // for the same supplier+product are genuinely different price points (Olympic
+  // itself prices them on separate columns) and must not be blended together.
+  // "Last" is resolved defensively by comparing captured_at on every row rather
+  // than trusting the caller's query order.
   const map = new Map<string, PriceAcc>();
   for (const r of prices) {
     const price = r.price;
@@ -46,28 +52,32 @@ export function buildCompetitorPricing(
     const product = (r.product_name ?? '').trim();
     if (!supplier || !product || price == null || !Number.isFinite(price)) continue;
 
-    const key = `${norm(supplier)}|${norm(product)}`;
+    const key = `${norm(supplier)}|${norm(product)}|${norm(r.distance)}`;
     const e = map.get(key) ?? {
-      supplier, product, sum: 0, count: 0, min: price, max: price, last: price, lastAt: '', lastDistance: null,
+      supplier, product, distance: r.distance ?? null, productId: r.product_id ?? null,
+      sum: 0, count: 0, min: price, max: price, last: price, lastAt: r.captured_at ?? '',
     };
     e.sum += price;
     e.count += 1;
     e.min = Math.min(e.min, price);
     e.max = Math.max(e.max, price);
-    e.last = price;
-    e.lastAt = r.captured_at ?? e.lastAt;
-    e.lastDistance = r.distance ?? e.lastDistance;
+    if (!e.productId && r.product_id) e.productId = r.product_id;
+    if (!e.lastAt || (r.captured_at && r.captured_at >= e.lastAt)) {
+      e.last = price;
+      e.lastAt = r.captured_at ?? e.lastAt;
+    }
     map.set(key, e);
   }
 
   const rows: CompetitorPriceRow[] = Array.from(map.values()).map((e) => {
-    const matched = productByName.get(norm(e.product)) ?? null;
-    let ourPrice: number | null = null;
-    if (matched) {
-      ourPrice = e.lastDistance === 'Long Distance'
-        ? (matched.long_price ?? matched.local_price)
-        : (matched.local_price ?? matched.long_price);
-    }
+    // Prefer the product_id captured at write time — free-text name matching
+    // is only a fallback for rows that predate/lack that link.
+    const matched = (e.productId && productById.get(e.productId))
+      || productByName.get(norm(e.product))
+      || null;
+    const ourPrice = matched
+      ? (e.distance === 'Long Distance' ? (matched.long_price ?? matched.local_price) : (matched.local_price ?? matched.long_price))
+      : null;
     const gapPct = ourPrice != null && ourPrice !== 0
       ? Math.round(((e.last - ourPrice) / ourPrice) * 1000) / 10
       : null;
@@ -75,6 +85,7 @@ export function buildCompetitorPricing(
     return {
       supplier: e.supplier,
       product: e.product,
+      distance: e.distance,
       last: e.last,
       avg: Math.round((e.sum / e.count) * 100) / 100,
       min: e.min,
@@ -82,11 +93,13 @@ export function buildCompetitorPricing(
       count: e.count,
       lastAt: e.lastAt,
       ourPrice,
+      ourProductActive: matched ? matched.is_active : null,
       gapPct,
     };
   });
 
-  return rows.sort((a, b) => b.count - a.count || a.supplier.localeCompare(b.supplier));
+  return rows.sort((a, b) =>
+    b.count - a.count || a.supplier.localeCompare(b.supplier) || a.product.localeCompare(b.product));
 }
 
 // ── Competitor footprint: who is each competitor servicing ──────────────────
@@ -116,9 +129,13 @@ export function buildCompetitorFootprint(
 
     const key = norm(supplier);
     const e = map.get(key) ?? { supplier, companies: new Set<string>(), products: new Set<string>(), lastCapturedAt: '' };
-    const company = (r.lead_id && companyById.get(r.lead_id))
-      ?? (r.lead_ref && companyByRef.get(r.lead_ref))
-      ?? 'Unknown company';
+    // Ternaries (not `&&`) so a falsy-but-non-nullish id (e.g. an empty string)
+    // still falls through to the next lookup instead of `??` treating '' as a
+    // real, resolved value and stopping there.
+    const company =
+      (r.lead_id ? companyById.get(r.lead_id) : undefined) ??
+      (r.lead_ref ? companyByRef.get(r.lead_ref) : undefined) ??
+      'Unknown company';
     e.companies.add(company);
     if (r.product_name) e.products.add(r.product_name.trim());
     if (r.captured_at && r.captured_at > e.lastCapturedAt) e.lastCapturedAt = r.captured_at;

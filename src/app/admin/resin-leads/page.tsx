@@ -43,9 +43,18 @@ export default async function ResinCrmPage() {
     anyDb.from('resin_supplier_prices').select(PRICE_COLS).order('captured_at', { ascending: true }),
   ]);
 
-  const errors = [leadsRes.error, visitsRes.error, productsRes.error, pricesRes.error].filter(Boolean);
-  if (errors.length) {
-    console.error('[admin/resin-leads]', errors);
+  // Track WHICH dataset failed, not just that something did — so the client
+  // can tell a genuinely-empty section apart from one whose fetch broke.
+  const loadErrors: string[] = [];
+  if (leadsRes.error) loadErrors.push('Leads');
+  if (visitsRes.error) loadErrors.push('Visits');
+  if (productsRes.error) loadErrors.push('Products');
+  if (pricesRes.error) loadErrors.push('Competitor Prices');
+  if (loadErrors.length) {
+    console.error('[admin/resin-leads]', {
+      failed: loadErrors,
+      errors: [leadsRes.error, visitsRes.error, productsRes.error, pricesRes.error].filter(Boolean),
+    });
   }
 
   const leads = (leadsRes.data ?? []) as ResinLead[];
@@ -67,7 +76,7 @@ export default async function ResinCrmPage() {
         competitorFootprint={competitorFootprint}
         fieldNotes={fieldNotes}
         stats={stats}
-        loadError={errors.length > 0}
+        loadErrors={loadErrors}
       />
     </AdminShell>
   );

@@ -5,6 +5,12 @@
 
 export type Distance = 'Local' | 'Long Distance';
 
+// Canonical enums — single source of truth shared by the rep-facing capture
+// form (ResinLeadForm.tsx) and this reporting dashboard, so filter dropdowns
+// and badge colors never go stale relative to what reps can actually pick.
+export const LEAD_STATUSES = ['New', 'Contacted', 'Qualified', 'Quoted', 'Negotiating', 'Won', 'Lost'] as const;
+export const VISIT_OUTCOMES = ['Introductory Meeting', 'Sample Requested', 'Quoted', 'Negotiating', 'Order Placed', 'Follow-up Required', 'Not Interested', 'Won', 'Lost'] as const;
+
 export interface ResinLead {
   id: string;
   lead_ref: string;
@@ -86,6 +92,7 @@ export interface ResinSupplierPrice {
 export interface CompetitorPriceRow {
   supplier: string;
   product: string;
+  distance: string | null;
   last: number;
   avg: number;
   min: number;
@@ -93,6 +100,7 @@ export interface CompetitorPriceRow {
   count: number;
   lastAt: string;
   ourPrice: number | null;
+  ourProductActive: boolean | null; // null = no catalogue match found at all
   gapPct: number | null; // positive = we're cheaper, negative = we're pricier
 }
 
