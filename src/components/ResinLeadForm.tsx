@@ -76,6 +76,10 @@ function todayLocal(): string {
 }
 function fmtR(n: number): string { return 'R' + n.toFixed(2); }
 
+// iOS renders a comma on the decimal keypad for South African / most non-US locales,
+// but numeric parsing downstream (Number()) only accepts a period.
+function normalizeDecimal(raw: string): string { return raw.replace(',', '.'); }
+
 export default function ResinLeadForm() {
   const [theme, setThemeState] = useState<Theme>('theme-light');
   const [rep, setRepState] = useState('Kim Williams');
@@ -572,16 +576,16 @@ export default function ResinLeadForm() {
                         <div className="rl-item-grid">
                           <div className="rl-field">
                             <label className="rl-label">Our Price (R)</label>
-                            <input className="rl-input" type="number" inputMode="decimal" min="0"
+                            <input className="rl-input" type="text" inputMode="decimal"
                               placeholder="Type price" value={it.our_price}
-                              onChange={e => updateItem(i, { our_price: e.target.value })} />
+                              onChange={e => updateItem(i, { our_price: normalizeDecimal(e.target.value) })} />
                             {listPrice != null && <p className="rl-ref">List ref: {fmtR(listPrice)}</p>}
                           </div>
                           <div className="rl-field">
                             <label className="rl-label">Est. Qty (kg)</label>
-                            <input className="rl-input" type="number" inputMode="decimal" min="0"
+                            <input className="rl-input" type="text" inputMode="decimal"
                               placeholder="0" value={it.est_qty}
-                              onChange={e => updateItem(i, { est_qty: e.target.value })} />
+                              onChange={e => updateItem(i, { est_qty: normalizeDecimal(e.target.value) })} />
                           </div>
                           <div className="rl-field">
                             <label className="rl-label">Order Every</label>
@@ -604,9 +608,9 @@ export default function ResinLeadForm() {
                           </div>
                           <div className="rl-field">
                             <label className="rl-label">Their Price (R)</label>
-                            <input className="rl-input" type="number" inputMode="decimal" min="0"
+                            <input className="rl-input" type="text" inputMode="decimal"
                               placeholder="Type price" value={it.supplier_price}
-                              onChange={e => updateItem(i, { supplier_price: e.target.value })} />
+                              onChange={e => updateItem(i, { supplier_price: normalizeDecimal(e.target.value) })} />
                             {hint && <p className="rl-ref">Last {fmtR(hint.last)} · Avg {fmtR(hint.avg)} · {hint.count}×</p>}
                           </div>
                           <div className="rl-field">
@@ -667,13 +671,13 @@ export default function ResinLeadForm() {
                         </div>
                         <div className="rl-field">
                           <label className="rl-label">Local Price</label>
-                          <input className="rl-input" type="number" inputMode="decimal" value={np.local_price} placeholder="Optional"
-                            onChange={e => setNp(p => ({ ...p, local_price: e.target.value }))} />
+                          <input className="rl-input" type="text" inputMode="decimal" value={np.local_price} placeholder="Optional"
+                            onChange={e => setNp(p => ({ ...p, local_price: normalizeDecimal(e.target.value) }))} />
                         </div>
                         <div className="rl-field">
                           <label className="rl-label">Long Dist. Price</label>
-                          <input className="rl-input" type="number" inputMode="decimal" value={np.long_price} placeholder="Optional"
-                            onChange={e => setNp(p => ({ ...p, long_price: e.target.value }))} />
+                          <input className="rl-input" type="text" inputMode="decimal" value={np.long_price} placeholder="Optional"
+                            onChange={e => setNp(p => ({ ...p, long_price: normalizeDecimal(e.target.value) }))} />
                         </div>
                       </div>
                       <div className="rl-addprod-btns">
