@@ -755,7 +755,8 @@ function PhotoSlot({ label, previews, uploading, onAdd, onRemove }: {
   onAdd: (f: File | null) => void;
   onRemove: (index: number) => void;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
   function handleChange(e: ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
     if (!files) return;
@@ -777,14 +778,26 @@ function PhotoSlot({ label, previews, uploading, onAdd, onRemove }: {
             <button type="button" className="svc-photo-remove" onClick={() => onRemove(i)} aria-label="Remove photo">×</button>
           </div>
         ))}
-        <div className="svc-photo-add-tile" onClick={() => inputRef.current?.click()}>
-          {uploading
-            ? <span className="svc-photo-status svc-uploading" style={{ fontSize: 20 }}>↑</span>
-            : <><span className="svc-photo-icon">📷</span><span className="svc-photo-add-lbl">Add</span></>
-          }
-          <input ref={inputRef} type="file" accept="image/*" multiple capture="environment"
-            style={{ display: 'none' }} onChange={handleChange} />
-        </div>
+        {uploading ? (
+          <div className="svc-photo-add-tile is-busy">
+            <span className="svc-photo-status svc-uploading" style={{ fontSize: 20 }}>↑</span>
+          </div>
+        ) : (
+          <div className="svc-photo-add-group">
+            <button type="button" className="svc-photo-add-btn" onClick={() => cameraRef.current?.click()}>
+              <span className="svc-photo-icon">📷</span>
+              <span className="svc-photo-add-lbl">Take Photo</span>
+            </button>
+            <button type="button" className="svc-photo-add-btn" onClick={() => galleryRef.current?.click()}>
+              <span className="svc-photo-icon">🖼</span>
+              <span className="svc-photo-add-lbl">Choose File</span>
+            </button>
+          </div>
+        )}
+        <input ref={cameraRef} type="file" accept="image/*" capture="environment"
+          style={{ display: 'none' }} onChange={handleChange} />
+        <input ref={galleryRef} type="file" accept="image/*" multiple
+          style={{ display: 'none' }} onChange={handleChange} />
       </div>
     </div>
   );
@@ -1114,10 +1127,21 @@ const css = `
     transition:border-color 0.12s;
   }
   .svc-photo-add-tile:hover { border-color:var(--yellow); }
+  .svc-photo-add-tile.is-busy { cursor:default; }
+  .svc-photo-add-group { display:flex; flex-direction:column; gap:6px; flex-shrink:0; }
+  .svc-photo-add-btn {
+    display:flex; align-items:center; gap:8px;
+    min-height:41px; padding:0 14px; border-radius:8px;
+    border:2px dashed var(--border); background:var(--elev); color:var(--text);
+    cursor:pointer; transition:border-color 0.12s;
+  }
+  .svc-photo-add-btn:hover { border-color:var(--yellow); }
+  .svc-photo-add-btn:focus-visible { outline:3px solid var(--focus); outline-offset:2px; }
+  .svc-photo-add-btn .svc-photo-icon { font-size:18px; }
   .svc-photo-icon { font-size:24px; }
   .svc-photo-add-lbl {
-    font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:10px;
-    text-transform:uppercase; letter-spacing:0.06em; color:var(--dim);
+    font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:11px;
+    text-transform:uppercase; letter-spacing:0.06em; color:var(--muted);
   }
   .svc-photo-status { font-size:13px; font-weight:700; }
   .svc-uploading { color:var(--yellow); animation:spin 1s linear infinite; }

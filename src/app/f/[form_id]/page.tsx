@@ -1,6 +1,6 @@
 import { createServerClient } from '@/lib/supabase/server';
 import type { FormSchema } from '@/lib/supabase/types';
-import FormRenderer from '@/components/FormRenderer';
+import FormRendererClientWrapper from '@/components/FormRendererClientWrapper';
 
 interface PageProps {
   params:       Promise<{ form_id: string }>;
@@ -12,11 +12,12 @@ export default async function PublicFormPage({ params, searchParams }: PageProps
   const sp = await searchParams;
 
   const db = createServerClient();
-  const { data: raw } = await db
+  const { data: raw, error: dbError } = await db
     .from('form_schemas')
     .select('id,title,description,schema,active_from,active_until,is_archived')
     .eq('id', form_id)
     .maybeSingle();
+  if (dbError) console.error('[form-page] supabase error', form_id, JSON.stringify(dbError));
   const form = raw as FormSchema | null;
 
   if (!form) {
@@ -49,7 +50,7 @@ export default async function PublicFormPage({ params, searchParams }: PageProps
   }
 
   return (
-    <FormRenderer
+    <FormRendererClientWrapper
       formId={form.id}
       title={form.title}
       description={form.description}
