@@ -1,5 +1,8 @@
 'use client';
 import { useState, useEffect, useRef, ChangeEvent, FormEvent } from 'react';
+import { CATEGORIES, PRODUCT_DATA } from '@/lib/returnProductData';
+import { COLOUR_HEX, getColourHex } from '@/lib/returnColourHex';
+import { pickContrastColour, needsSwatchBorder } from '@/lib/uiHelpers';
 
 interface Props { formId: string; }
 
@@ -59,7 +62,9 @@ export default function FactoryNCRForm({ formId }: Props) {
   const [ncType,      setNcType]      = useState('');
   const [severity,    setSeverity]    = useState('');
   const [location,    setLocation]    = useState('');
+  const [category,    setCategory]    = useState('');
   const [product,     setProduct]     = useState('');
+  const [colour,      setColour]      = useState('');
   const [batchNo,     setBatchNo]     = useState('');
   const [supervisor,  setSupervisor]  = useState('');
   const [description, setDescription] = useState('');
@@ -71,8 +76,27 @@ export default function FactoryNCRForm({ formId }: Props) {
 
   const date = todayLocal();
 
+  const categoryEntry = CATEGORIES.find(c => c.label === category);
+  const productList   = categoryEntry?.products ?? [];
+  const productInfo   = product ? PRODUCT_DATA[product] : null;
+  const colourList    = productInfo?.colours ?? [];
+  const colourIsNA    = colourList.length === 1 && colourList[0] === 'N/A';
+
+  function handleCategoryChange(val: string) {
+    setCategory(val);
+    setProduct('');
+    setColour('');
+  }
+
+  function handleProductChange(val: string) {
+    setProduct(val);
+    const info = val ? PRODUCT_DATA[val] : null;
+    const colours = info?.colours ?? [];
+    setColour(colours.length === 1 && colours[0] === 'N/A' ? 'N/A' : '');
+  }
+
   const canSubmit = Boolean(
-    ncType && severity && location && product.trim() && supervisor && description.trim() && !photoUploading
+    ncType && severity && location && category && product && colour && supervisor && description.trim() && !photoUploading
   );
 
   async function handlePhoto(file: File | null) {
@@ -107,7 +131,9 @@ export default function FactoryNCRForm({ formId }: Props) {
       nc_type: ncType,
       severity,
       location,
+      category,
       product,
+      colour,
       batch_no: batchNo,
       supervisor,
       description,
@@ -202,31 +228,44 @@ export default function FactoryNCRForm({ formId }: Props) {
 
         <div className="ri-panes">
 
-          {/* LEFT PANE — Type + Severity */}
+          {/* PANE 1 — Category + Product */}
           <section className="ri-pane">
-            <div className="ri-step-label">1 · Type of Issue</div>
-            <ButtonGrid cols={1} options={NC_TYPES} value={ncType} onChange={setNcType} wide />
-
-            <div className="ri-step-label">2 · Severity</div>
-            <ButtonGrid cols={2} options={SEVERITIES} value={severity} onChange={setSeverity} />
+            <div className="ri-step-label">1 · Category</div>
+            <CategoryGrid value={category} onChange={handleCategoryChange} />
+            {category && (
+              <>
+                <div className="ri-step-label">2 · Product</div>
+                <ProductList products={productList} value={product} onChange={handleProductChange} />
+              </>
+            )}
           </section>
 
-          {/* MIDDLE PANE — Location + Product/Batch/Supervisor */}
+          {/* PANE 2 — Colour */}
           <section className="ri-pane">
-            <div className="ri-step-label">3 · Location</div>
+            <div className="ri-step-label">
+              3 · Colour{product && !colourIsNA && <span className="ri-step-sub"> — {colourList.length} available</span>}
+            </div>
+            {!product && <EmptyHint text="Pick a product to see colours" />}
+            {product && colourIsNA && (
+              <div className="ri-na">Not applicable for this product</div>
+            )}
+            {product && !colourIsNA && (
+              <ColourSwatchGrid colours={colourList} value={colour} onChange={setColour} />
+            )}
+          </section>
+
+          {/* PANE 3 — Type + Severity + Location + Batch + Supervisor */}
+          <section className="ri-pane">
+            <div className="ri-step-label">4 · Type of Issue</div>
+            <ButtonGrid cols={1} options={NC_TYPES} value={ncType} onChange={setNcType} wide />
+
+            <div className="ri-step-label">5 · Severity</div>
+            <ButtonGrid cols={2} options={SEVERITIES} value={severity} onChange={setSeverity} />
+
+            <div className="ri-step-label">6 · Location</div>
             <ButtonGrid cols={1} options={LOCATIONS} value={location} onChange={setLocation} wide />
 
-            <div className="ri-step-label">4 · Product / SKU</div>
-            <input
-              type="text"
-              className="ri-input"
-              value={product}
-              onChange={e => setProduct(e.target.value)}
-              placeholder="e.g. Enamel 5L White"
-              required
-            />
-
-            <div className="ri-step-label">5 · Batch Number</div>
+            <div className="ri-step-label">7 · Batch Number</div>
             <input
               type="text"
               className="ri-input"
@@ -235,13 +274,13 @@ export default function FactoryNCRForm({ formId }: Props) {
               placeholder="e.g. BT-2026-0042 (if known)"
             />
 
-            <div className="ri-step-label">6 · Supervisor</div>
+            <div className="ri-step-label">8 · Supervisor</div>
             <ButtonGrid cols={1} options={SUPERVISORS} value={supervisor} onChange={setSupervisor} wide />
           </section>
 
-          {/* RIGHT PANE — Description + Photo + Submit */}
+          {/* PANE 4 — Description + Photo + Submit */}
           <section className="ri-pane">
-            <div className="ri-step-label">7 · Description</div>
+            <div className="ri-step-label">9 · Description</div>
             <textarea
               className="ri-input"
               value={description}
@@ -251,7 +290,7 @@ export default function FactoryNCRForm({ formId }: Props) {
               required
             />
 
-            <div className="ri-step-label">8 · Photo Evidence</div>
+            <div className="ri-step-label">10 · Photo Evidence</div>
             <PhotoSlot url={photoUrl} uploading={photoUploading} onAdd={handlePhoto} onRemove={() => setPhotoUrl(null)} />
 
             {error && <p className="ri-error">{error}</p>}
@@ -269,6 +308,72 @@ export default function FactoryNCRForm({ formId }: Props) {
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────
+
+function EmptyHint({ text }: { text: string }) {
+  return <div className="ri-empty">{text}</div>;
+}
+
+function CategoryGrid({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="ri-cat-grid">
+      {CATEGORIES.map(c => (
+        <button
+          key={c.label}
+          type="button"
+          className={`ri-btn ${value === c.label ? 'is-active' : ''}`}
+          aria-pressed={value === c.label}
+          onClick={() => onChange(c.label)}
+        >
+          {c.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ProductList({ products, value, onChange }: { products: string[]; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="ri-prod-list">
+      {products.map(p => (
+        <button
+          key={p}
+          type="button"
+          className={`ri-btn ri-btn-wide ${value === p ? 'is-active' : ''}`}
+          aria-pressed={value === p}
+          onClick={() => onChange(p)}
+        >
+          {p}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ColourSwatchGrid({ colours, value, onChange }: { colours: string[]; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="ri-swatch-grid">
+      {colours.map(name => {
+        const hex = getColourHex(name);
+        const fg  = pickContrastColour(hex);
+        const needsBorder = needsSwatchBorder(hex);
+        const isMissing = !(name in COLOUR_HEX);
+        return (
+          <button
+            key={name}
+            type="button"
+            className={`ri-swatch ${value === name ? 'is-selected' : ''} ${needsBorder ? 'has-border' : ''}`}
+            style={{ background: hex, color: fg }}
+            aria-pressed={value === name}
+            title={isMissing ? `${name} — hex not yet set` : name}
+            onClick={() => onChange(name)}
+          >
+            {name}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 function ButtonGrid({ options, value, onChange, cols, wide }: {
   options: string[]; value: string; onChange: (v: string) => void; cols: number; wide?: boolean;
@@ -474,7 +579,7 @@ const css = `
   /* ── Panes ── */
   .ri-panes {
     display: grid;
-    grid-template-columns: 1fr 1fr 1.1fr;
+    grid-template-columns: 1fr 1fr 1fr 1.1fr;
     gap: 10px;
     flex: 1;
     min-height: 0;
@@ -536,12 +641,78 @@ const css = `
     font-size: 13px;
   }
 
+  /* ── Category grid ── */
+  .ri-cat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 5px;
+    margin-bottom: 6px;
+  }
+
   /* ── Product / option list ── */
   .ri-prod-list {
     display: flex;
     flex-direction: column;
     gap: 5px;
     margin-bottom: 6px;
+    overflow-y: auto;
+  }
+
+  /* ── Empty hint ── */
+  .ri-empty {
+    color: var(--r-text-dim);
+    font-size: 12px;
+    text-align: center;
+    padding: 20px 12px;
+    border: 1px dashed var(--r-border-soft);
+    border-radius: 8px;
+    margin-bottom: 8px;
+  }
+  .ri-na {
+    color: var(--r-text-muted);
+    font-style: italic;
+    font-size: 14px;
+    text-align: center;
+    padding: 40px 16px;
+  }
+
+  /* ── Colour swatch grid ── */
+  .ri-swatch-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+    flex: 1;
+    align-content: start;
+  }
+  .ri-swatch {
+    border-radius: 8px;
+    padding: 12px 4px;
+    text-align: center;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    line-height: 1.15;
+    cursor: pointer;
+    border: 2px solid transparent;
+    min-height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.08s;
+  }
+  .ri-swatch.has-border:not(.is-selected) {
+    border-color: var(--r-border-soft);
+  }
+  .ri-swatch:hover { transform: scale(1.03); }
+  .ri-swatch:focus-visible {
+    outline: 3px solid var(--r-focus);
+    outline-offset: 3px;
+  }
+  .ri-swatch.is-selected {
+    border-color: var(--r-selected-bd);
+    box-shadow: 0 0 0 2px var(--r-pane), 0 0 0 4px var(--r-selected-bd);
   }
 
   /* ── 2-col grid ── */
