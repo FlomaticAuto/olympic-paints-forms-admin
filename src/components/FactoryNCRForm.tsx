@@ -29,7 +29,7 @@ const LOCATIONS = [
   'Other',
 ];
 
-const SUPERVISORS = ['Sigma', 'Production Supervisor', 'Other'];
+const SUPERVISORS = ['Maruti', 'Ravi', 'Piyush', 'Mukesh'];
 
 function generateRef(): string {
   const now = new Date();
@@ -65,6 +65,7 @@ export default function FactoryNCRForm({ formId }: Props) {
   const [category,    setCategory]    = useState('');
   const [product,     setProduct]     = useState('');
   const [colour,      setColour]      = useState('');
+  const [size,        setSize]        = useState('');
   const [batchNo,     setBatchNo]     = useState('');
   const [supervisor,  setSupervisor]  = useState('');
   const [description, setDescription] = useState('');
@@ -80,23 +81,26 @@ export default function FactoryNCRForm({ formId }: Props) {
   const productList   = categoryEntry?.products ?? [];
   const productInfo   = product ? PRODUCT_DATA[product] : null;
   const colourList    = productInfo?.colours ?? [];
+  const sizeList      = productInfo?.sizes ?? [];
   const colourIsNA    = colourList.length === 1 && colourList[0] === 'N/A';
 
   function handleCategoryChange(val: string) {
     setCategory(val);
     setProduct('');
     setColour('');
+    setSize('');
   }
 
   function handleProductChange(val: string) {
     setProduct(val);
+    setSize('');
     const info = val ? PRODUCT_DATA[val] : null;
     const colours = info?.colours ?? [];
     setColour(colours.length === 1 && colours[0] === 'N/A' ? 'N/A' : '');
   }
 
   const canSubmit = Boolean(
-    ncType && severity && location && category && product && colour && supervisor && description.trim() && !photoUploading
+    ncType && severity && location && category && product && colour && size && supervisor && description.trim() && !photoUploading
   );
 
   async function handlePhoto(file: File | null) {
@@ -134,6 +138,7 @@ export default function FactoryNCRForm({ formId }: Props) {
       category,
       product,
       colour,
+      size,
       batch_no: batchNo,
       supervisor,
       description,
@@ -252,20 +257,24 @@ export default function FactoryNCRForm({ formId }: Props) {
             {product && !colourIsNA && (
               <ColourSwatchGrid colours={colourList} value={colour} onChange={setColour} />
             )}
+
+            <div className="ri-step-label">4 · Size</div>
+            {!product && <EmptyHint text="Pick a product to see sizes" />}
+            {product && <SizePills sizes={sizeList} value={size} onChange={setSize} />}
           </section>
 
           {/* PANE 3 — Type + Severity + Location + Batch + Supervisor */}
           <section className="ri-pane">
-            <div className="ri-step-label">4 · Type of Issue</div>
+            <div className="ri-step-label">5 · Type of Issue</div>
             <ButtonGrid cols={1} options={NC_TYPES} value={ncType} onChange={setNcType} wide />
 
-            <div className="ri-step-label">5 · Severity</div>
+            <div className="ri-step-label">6 · Severity</div>
             <ButtonGrid cols={2} options={SEVERITIES} value={severity} onChange={setSeverity} />
 
-            <div className="ri-step-label">6 · Location</div>
+            <div className="ri-step-label">7 · Location</div>
             <ButtonGrid cols={1} options={LOCATIONS} value={location} onChange={setLocation} wide />
 
-            <div className="ri-step-label">7 · Batch Number</div>
+            <div className="ri-step-label">8 · Batch Number</div>
             <input
               type="text"
               className="ri-input"
@@ -274,13 +283,13 @@ export default function FactoryNCRForm({ formId }: Props) {
               placeholder="e.g. BT-2026-0042 (if known)"
             />
 
-            <div className="ri-step-label">8 · Supervisor</div>
+            <div className="ri-step-label">9 · Supervisor</div>
             <ButtonGrid cols={1} options={SUPERVISORS} value={supervisor} onChange={setSupervisor} wide />
           </section>
 
           {/* PANE 4 — Description + Photo + Submit */}
           <section className="ri-pane">
-            <div className="ri-step-label">9 · Description</div>
+            <div className="ri-step-label">10 · Description</div>
             <textarea
               className="ri-input"
               value={description}
@@ -290,7 +299,7 @@ export default function FactoryNCRForm({ formId }: Props) {
               required
             />
 
-            <div className="ri-step-label">10 · Photo Evidence</div>
+            <div className="ri-step-label">11 · Photo Evidence</div>
             <PhotoSlot url={photoUrl} uploading={photoUploading} onAdd={handlePhoto} onRemove={() => setPhotoUrl(null)} />
 
             {error && <p className="ri-error">{error}</p>}
@@ -371,6 +380,24 @@ function ColourSwatchGrid({ colours, value, onChange }: { colours: string[]; val
           </button>
         );
       })}
+    </div>
+  );
+}
+
+function SizePills({ sizes, value, onChange }: { sizes: string[]; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="ri-pill-row">
+      {sizes.map(s => (
+        <button
+          key={s}
+          type="button"
+          className={`ri-btn ri-btn-pill ${value === s ? 'is-active' : ''}`}
+          aria-pressed={value === s}
+          onClick={() => onChange(s)}
+        >
+          {s}
+        </button>
+      ))}
     </div>
   );
 }
@@ -640,6 +667,10 @@ const css = `
     padding: 11px 12px;
     font-size: 13px;
   }
+  .ri-btn-pill { flex: 1; }
+
+  /* ── Pill row ── */
+  .ri-pill-row { display: flex; gap: 5px; margin-bottom: 6px; }
 
   /* ── Category grid ── */
   .ri-cat-grid {
