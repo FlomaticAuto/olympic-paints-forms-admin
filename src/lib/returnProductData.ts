@@ -17,7 +17,7 @@ export interface CategoryEntry {
 const ENAMEL_SIZES        = ['500ml', '1L', '5L', '20L'];
 const PVA_SIZES           = ['5L', '20L'];
 const ROOF_SIZES          = ['5L', '20L'];
-const VARNISH_SIZES       = ['1L', '5L'];
+const VARNISH_SIZES       = ['500ml', '1L', '5L'];
 const PRIMER_SIZES        = ['5L', '20L'];
 const SMALL_SIZES         = ['500ml', '1L', '5L'];
 const OXIDE_POWDER_SIZES  = ['500g', '500g x 24', '5kg'];
@@ -185,7 +185,7 @@ export const PRODUCT_DATA: Record<string, ProductInfo> = {
   },
   'Pick \'n Save Econo Gloss Enamel': {
     colours: ['White', 'Green', 'Cream', 'Yellow', 'Blue', 'Peach', 'Golden Brown', 'Black', 'Pink'],
-    sizes: ['1L', '5L', '20L'],
+    sizes: ['500ml', '1L', '5L', '20L'],
   },
   'Flat White Enamel': {
     colours: ['White'],
