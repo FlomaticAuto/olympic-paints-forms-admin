@@ -45,6 +45,21 @@ export interface ResinVisitProductLine {
   est_value: number | null;
 }
 
+export interface ResinVisitEditChange {
+  field: string;
+  label: string;
+  from: string;
+  to: string;
+}
+
+export interface ResinVisitEdit {
+  id: string;
+  visit_id: string;
+  edited_by: string | null;
+  changes: ResinVisitEditChange[];
+  edited_at: string;
+}
+
 export interface ResinLeadVisit {
   id: string;
   visit_ref: string;
@@ -60,6 +75,8 @@ export interface ResinLeadVisit {
   total: number | null;
   notes: string | null;
   created_at: string;
+  updated_at?: string | null;
+  edits?: ResinVisitEdit[];
 }
 
 export interface ResinProduct {
