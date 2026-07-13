@@ -4,6 +4,7 @@ import { LEAD_STATUSES, VISIT_OUTCOMES } from '@/lib/resinCrm/types';
 import ResinLeadsListView from '@/components/resin-leads/ResinLeadsListView';
 import ResinVisitsListView from '@/components/resin-leads/ResinVisitsListView';
 import ResinIntelView from '@/components/resin-leads/ResinIntelView';
+import ResinEstimateView from '@/components/resin-leads/ResinEstimateView';
 
 type Distance = 'Local' | 'Long Distance';
 type Theme = 'theme-dark' | 'theme-light' | 'theme-navy';
@@ -83,7 +84,7 @@ function normalizeDecimal(raw: string): string { return raw.replace(',', '.'); }
 export default function ResinLeadForm() {
   const [theme, setThemeState] = useState<Theme>('theme-light');
   const [rep, setRepState] = useState('Kim Williams');
-  const [mode, setMode] = useState<'capture' | 'visit' | 'leads' | 'visits' | 'intel'>('capture');
+  const [mode, setMode] = useState<'capture' | 'visit' | 'leads' | 'visits' | 'intel' | 'estimate'>('capture');
 
   useEffect(() => {
     const t = window.localStorage.getItem(THEME_KEY);
@@ -391,6 +392,8 @@ export default function ResinLeadForm() {
               onClick={() => { setMode('visits'); setError(null); }}>Visits</button>
             <button type="button" className={`rl-mode-btn${mode === 'intel' ? ' is-active' : ''}`}
               onClick={() => { setMode('intel'); setError(null); }}>Intel</button>
+            <button type="button" className={`rl-mode-btn${mode === 'estimate' ? ' is-active' : ''}`}
+              onClick={() => { setMode('estimate'); setError(null); }}>Estimate</button>
           </div>
         </div>
 
@@ -735,6 +738,9 @@ export default function ResinLeadForm() {
 
           {/* ── ASSESSMENT & INTEL ── */}
           {mode === 'intel' && <ResinIntelView />}
+
+          {/* ── ESTIMATE ── */}
+          {mode === 'estimate' && <ResinEstimateView rep={rep} />}
         </div>
       </div>
       <style dangerouslySetInnerHTML={{ __html: css }} />
@@ -1030,6 +1036,23 @@ const css = `
     .rl-compare-nums { gap:16px; }
     input, select, textarea, .rl-btn { font-size:16px; }
   }
+  /* ── Estimate tab ── */
+  .rl-est-ok {
+    margin-top:12px; padding:10px 14px; border-radius:10px;
+    background:rgba(45,140,122,0.14); color:#79d4c2;
+    border:1px solid rgba(45,140,122,0.35); font-size:13px; font-weight:600;
+  }
+  .rl-est-list { display:flex; flex-direction:column; gap:10px; }
+  .rl-est-card {
+    display:flex; align-items:center; gap:12px; padding:12px 14px;
+    background:var(--section-bg); border:1px solid var(--border); border-radius:10px;
+  }
+  .rl-est-main { flex:1; min-width:0; }
+  .rl-est-num { font-weight:800; font-size:14px; letter-spacing:0.02em; color:var(--text); }
+  .rl-est-client { font-size:13px; margin-top:1px; color:var(--text); }
+  .rl-est-meta { font-size:11px; color:var(--muted); margin-top:3px; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  .rl-est-side { display:flex; flex-direction:column; align-items:flex-end; gap:6px; flex-shrink:0; }
+  .rl-est-total { font-weight:800; font-size:14px; white-space:nowrap; color:var(--text); }
   /* Full-screen app feel when launched from the home screen */
   @media (display-mode:standalone) {
     .rl-header { padding-top:calc(14px + env(safe-area-inset-top)); }
