@@ -46,8 +46,14 @@ interface EstimateRow {
   status: string;
   price_basis: string;
   lead_ref: string | null;
+  pdf_url: string | null;
   total?: number;
 }
+
+// Prefer the archived R2 copy; fall back to on-demand render (always current,
+// and the only option for estimates that were never sent).
+const pdfHref = (e: { id: string; pdf_url?: string | null }) =>
+  e.pdf_url || `/api/resin-leads/estimate/${e.id}/pdf`;
 
 const fmtR = (n: number) => 'R' + (Number(n) || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const STATUS_PILL: Record<string, string> = {
@@ -411,9 +417,12 @@ export default function ResinEstimateView({ rep }: { rep: string }) {
               </div>
               <div className="rl-est-side">
                 <div className="rl-est-total">{fmtR(e.total ?? 0)}</div>
-                <button type="button" className="rl-add-btn rl-add-btn-alt" onClick={() => resend(e.id)} disabled={sendingId === e.id}>
-                  {sendingId === e.id ? 'Sending…' : 'Email to Kim'}
-                </button>
+                <div className="rl-est-actions">
+                  <a className="rl-add-btn" href={pdfHref(e)} target="_blank" rel="noopener noreferrer">View PDF</a>
+                  <button type="button" className="rl-add-btn rl-add-btn-alt" onClick={() => resend(e.id)} disabled={sendingId === e.id}>
+                    {sendingId === e.id ? 'Sending…' : 'Email to Kim'}
+                  </button>
+                </div>
               </div>
             </div>
           ))}
