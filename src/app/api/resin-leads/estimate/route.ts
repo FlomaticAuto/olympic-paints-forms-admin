@@ -9,7 +9,7 @@ import type { RawEstimateLine } from '@/lib/resinEstimates/types';
 // /api/resin-leads. Lives inside the rep-facing Resins dashboard.
 
 const EST_COLS =
-  'id,estimate_number,client,contact_name,contact_email,contact_phone,site,date_issued,valid_until,status,price_basis,notes,terms,prepared_by,created_at';
+  'id,estimate_number,client,contact_name,contact_email,contact_phone,site,date_issued,valid_until,status,price_basis,notes,terms,prepared_by,lead_id,lead_ref,created_at';
 
 // GET — list estimates (newest first), each with its total attached.
 export async function GET(req: NextRequest) {
@@ -83,6 +83,8 @@ export async function POST(req: NextRequest) {
         notes:         s(body.notes),
         terms:         s(body.terms),
         prepared_by:   s(body.prepared_by) ?? 'Kim Williams',
+        lead_id:       s(body.lead_id),
+        lead_ref:      s(body.lead_ref),
         status:        'draft',
       })
       .select(EST_COLS)

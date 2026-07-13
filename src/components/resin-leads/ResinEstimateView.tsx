@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 // Estimate builder + recent list for the /resin-leads dashboard.
 // Public (no auth) — matches the access model of the rest of the page.
@@ -13,6 +13,19 @@ interface Product {
   local_price: number | null;
   long_price: number | null;
   category: string | null;
+}
+interface Lead {
+  id: string;
+  lead_ref: string;
+  company: string;
+  contact_person: string | null;
+  phone: string | null;
+  mobile: string | null;
+  email: string | null;
+  distance: 'Local' | 'Long Distance';
+  street: string | null;
+  city: string | null;
+  province: string | null;
 }
 interface LineDraft {
   key: string;
@@ -32,6 +45,7 @@ interface EstimateRow {
   date_issued: string;
   status: string;
   price_basis: string;
+  lead_ref: string | null;
   total?: number;
 }
 
@@ -59,6 +73,13 @@ export default function ResinEstimateView({ rep }: { rep: string }) {
   const [notes, setNotes] = useState('');
   const [lines, setLines] = useState<LineDraft[]>([emptyLine()]);
 
+  // Lead picker (search existing leads → auto-populate customer details)
+  const [lead, setLead] = useState<Lead | null>(null);
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<Lead[]>([]);
+  const [searching, setSearching] = useState(false);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [recent, setRecent] = useState<EstimateRow[]>([]);
@@ -73,6 +94,45 @@ export default function ResinEstimateView({ rep }: { rep: string }) {
   function loadRecent() {
     fetch('/api/resin-leads/estimate').then(r => r.json())
       .then((d: EstimateRow[]) => setRecent(Array.isArray(d) ? d : [])).catch(() => {});
+  }
+
+  // ── Lead search + auto-populate ──────────────────────────────────────────
+  function searchLeads(q: string) {
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    if (q.trim().length < 2) { setResults([]); return; }
+    searchTimeout.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await fetch(`/api/resin-leads/search?q=${encodeURIComponent(q)}`);
+        const data = await res.json();
+        setResults(Array.isArray(data) ? data : []);
+      } catch {
+        setResults([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+  }
+
+  function selectLead(l: Lead) {
+    setLead(l);
+    setResults([]);
+    setQuery('');
+    // Populate every customer detail we can from the lead.
+    setClient(l.company ?? '');
+    setContactName(l.contact_person ?? '');
+    setContactEmail(l.email ?? '');
+    setContactPhone(l.phone ?? l.mobile ?? '');
+    setSite([l.street, l.city, l.province].filter(Boolean).join(', '));
+    setPriceBasis(l.distance === 'Long Distance' ? 'long' : 'local');
+    setMsg(null);
+  }
+
+  function clearLead() {
+    // Unlink but keep whatever was typed so nothing is lost.
+    setLead(null);
+    setQuery('');
+    setResults([]);
   }
 
   const priceOf = (p: Product): number | null =>
@@ -104,6 +164,7 @@ export default function ResinEstimateView({ rep }: { rep: string }) {
   function resetForm() {
     setClient(''); setContactName(''); setContactEmail(''); setContactPhone('');
     setSite(''); setValidUntil(''); setNotes(''); setLines([emptyLine()]);
+    setLead(null); setQuery('');
   }
 
   // Create the estimate, then immediately render+email its PDF to Kim.
@@ -126,6 +187,7 @@ export default function ResinEstimateView({ rep }: { rep: string }) {
           client, contact_name: contactName, contact_email: contactEmail, contact_phone: contactPhone,
           site, valid_until: validUntil || null, price_basis: priceBasis, notes,
           prepared_by: rep, lines: payloadLines,
+          lead_id: lead?.id ?? null, lead_ref: lead?.lead_ref ?? null,
         }),
       });
       const est = await res.json();
@@ -167,10 +229,69 @@ export default function ResinEstimateView({ rep }: { rep: string }) {
 
   return (
     <div className="rl-form">
-      <div className="rl-section-title">Customer</div>
-      <div className="rl-field">
-        <label className="rl-label">Client / Company <span className="rl-req">*</span></label>
-        <input className="rl-input" value={client} onChange={e => setClient(e.target.value)} placeholder="Company name" autoComplete="off" />
+      <div className="rl-section-title">
+        Customer
+        <span className="rl-section-note">Search an existing lead to auto-fill, or type a new company</span>
+      </div>
+
+      {!lead ? (
+        <div className="rl-field rl-search-field">
+          <label className="rl-label">Client / Company <span className="rl-req">*</span></label>
+          <input
+            className="rl-input"
+            value={query || client}
+            autoComplete="off"
+            placeholder="Search leads by company, contact, city or ref…"
+            onChange={e => {
+              const v = e.target.value;
+              setQuery(v);
+              setClient(v);            // typing also fills the client field (walk-in / new company)
+              searchLeads(v);
+            }}
+          />
+          {searching && <p className="rl-hint">Searching leads…</p>}
+          {!searching && results.length > 0 && (
+            <ul className="rl-search-list">
+              {results.map(l => (
+                <li key={l.id} className="rl-search-item" onClick={() => selectLead(l)}>
+                  <span className="rl-search-name">{l.company}</span>
+                  {l.contact_person && <span className="rl-search-meta">{l.contact_person}</span>}
+                  {l.city && <span className="rl-search-meta">{l.city}</span>}
+                  <span className="rl-search-meta">{l.lead_ref}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {!searching && query.trim().length >= 2 && results.length === 0 && (
+            <p className="rl-hint">No matching lead — this will be quoted as a new company.</p>
+          )}
+        </div>
+      ) : (
+        <div className="rl-lead-card">
+          <div className="rl-lead-card-top">
+            <span className="rl-lead-company">{lead.company}</span>
+            <span className={`rl-pill rl-pill-${lead.distance === 'Local' ? 'local' : 'long'}`}>{lead.distance}</span>
+          </div>
+          <div className="rl-lead-grid">
+            {lead.contact_person && <div><span className="rl-lc-l">Contact</span><span className="rl-lc-v">{lead.contact_person}</span></div>}
+            {(lead.phone || lead.mobile) && <div><span className="rl-lc-l">Phone</span><span className="rl-lc-v">{lead.phone ?? lead.mobile}</span></div>}
+            {lead.email && <div><span className="rl-lc-l">Email</span><span className="rl-lc-v">{lead.email}</span></div>}
+            {lead.city && <div><span className="rl-lc-l">City</span><span className="rl-lc-v">{lead.city}{lead.province ? `, ${lead.province}` : ''}</span></div>}
+            <div><span className="rl-lc-l">Ref</span><span className="rl-lc-v">{lead.lead_ref}</span></div>
+          </div>
+          <button type="button" className="rl-clear-btn" onClick={clearLead}>Change lead</button>
+        </div>
+      )}
+
+      {lead && (
+        <div className="rl-field">
+          <label className="rl-label">Client / Company <span className="rl-req">*</span></label>
+          <input className="rl-input" value={client} onChange={e => setClient(e.target.value)} placeholder="Company name" autoComplete="off" />
+        </div>
+      )}
+      <div className="rl-section-title">
+        Contact &amp; site
+        {lead && <span className="rl-section-note">Pulled from {lead.lead_ref} · editable</span>}
       </div>
       <div className="rl-row-2">
         <div className="rl-field">
@@ -286,7 +407,7 @@ export default function ResinEstimateView({ rep }: { rep: string }) {
               <div className="rl-est-main">
                 <div className="rl-est-num">{e.estimate_number}</div>
                 <div className="rl-est-client">{e.client}{e.contact_name ? ` · ${e.contact_name}` : ''}</div>
-                <div className="rl-est-meta">{e.date_issued} · {e.price_basis === 'long' ? 'Long dist.' : 'Local'} · <span className={statusPill(e.status)}>{e.status}</span></div>
+                <div className="rl-est-meta">{e.date_issued} · {e.price_basis === 'long' ? 'Long dist.' : 'Local'}{e.lead_ref ? ` · ${e.lead_ref}` : ''} · <span className={statusPill(e.status)}>{e.status}</span></div>
               </div>
               <div className="rl-est-side">
                 <div className="rl-est-total">{fmtR(e.total ?? 0)}</div>
