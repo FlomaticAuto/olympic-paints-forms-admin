@@ -1,6 +1,6 @@
 import { Fragment } from 'react';
 import type { ResinEstimate, ResinEstimateLine } from '@/lib/resinEstimates/types';
-import { RESIN_COMPANY, LOGO_DATA_URI } from '@/lib/resinEstimates/company';
+import { RESIN_COMPANY, LOGO_DATA_URI, BRAND } from '@/lib/resinEstimates/company';
 
 function fmt(n: number) {
   return `R ${Number(n).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -34,25 +34,27 @@ export default function ResinEstimateDocument({
   return (
     <>
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Barlow:wght@400;500;600;700&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background:#fff; font-family: Arial, Helvetica, sans-serif; color:#2b2b2d; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        body { background:#fff; font-family:'Barlow', Arial, Helvetica, sans-serif; color:#2b2b2d; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        h1,h2,h3,.qtitle,.qproject-title,.qnote .amt,.qtotals .grand .val { font-family:'Barlow Condensed','Barlow',Arial,sans-serif; }
         .page { max-width: 860px; margin: 0 auto; padding: 0 24px 12px; }
         @media print { .page { padding: 0 18px 10px; } }
         @page { margin: 10mm 10mm 10mm 10mm; }
         @page :first { margin-top: 0; }
 
         /* Header */
-        .qhead { display:grid; grid-template-columns:auto 1fr auto; align-items:center; background:#fff; border-bottom:3px solid #F6C324; margin:0 -24px 0; }
+        .qhead { display:grid; grid-template-columns:auto 1fr auto; align-items:center; background:#fff; border-bottom:3px solid #F5C400; margin:0 -24px 0; }
         @media print { .qhead { margin:0 -18px 0; } }
         .qhead-left { display:flex; align-items:center; padding:6px 10px 6px 24px; }
         .qlogo { width:96px; height:96px; object-fit:contain; object-position:left center; }
         .qtitle-block { display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:0 10px; }
-        .qtitle { font-size:26px; font-weight:900; letter-spacing:0.06em; color:#0D0D0B; line-height:1; }
+        .qtitle { font-size:26px; font-weight:900; letter-spacing:0.06em; color:#0D0D0D; line-height:1; }
         .qtagline { font-size:8px; font-weight:700; letter-spacing:0.18em; color:#6b7280; text-transform:uppercase; margin-top:3px; }
         .qmeta { text-align:right; font-size:11px; color:#414143; line-height:1.5; padding:4px 24px 4px 10px; white-space:nowrap; }
         .qmeta b { color:#1a1a1a; }
 
-        .qstrip { background:#0D0D0B; color:#fff; font-size:9px; letter-spacing:0.02em; display:flex; flex-wrap:wrap; gap:12px; padding:4px 24px; margin:0 -24px 8px; }
+        .qstrip { background:#0D0D0D; color:#fff; font-size:9px; letter-spacing:0.02em; display:flex; flex-wrap:wrap; gap:12px; padding:4px 24px; margin:0 -24px 8px; }
 
         .qsec-label { font-size:8px; font-weight:800; letter-spacing:0.16em; text-transform:uppercase; color:#C88F00; margin-bottom:3px; }
         .qproject-title { font-size:16px; font-weight:800; color:#1a1a1a; margin-bottom:3px; }
@@ -64,9 +66,9 @@ export default function ResinEstimateDocument({
 
         table.qlines { width:100%; border-collapse:collapse; }
         table.qlines thead { display:table-header-group; }
-        table.qlines thead th { font-size:8px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#fff; background:#0D0D0B; padding:4px 8px; text-align:left; }
+        table.qlines thead th { font-size:8px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#fff; background:#0D0D0D; padding:4px 8px; text-align:left; }
         table.qlines thead th.r { text-align:right; }
-        .qsec-row td { background:#FDF4CF; color:#8a6b00; font-weight:800; font-size:10px; letter-spacing:0.08em; text-transform:uppercase; padding:4px 8px; border-top:2px solid #F6C324; }
+        .qsec-row td { background:#FDF4CF; color:#8a6b00; font-weight:800; font-size:10px; letter-spacing:0.08em; text-transform:uppercase; padding:4px 8px; border-top:2px solid #F5C400; }
         .qsec-row td.amt { text-align:right; }
         table.qlines tbody tr { page-break-inside:avoid; break-inside:avoid; }
         table.qlines tbody td { font-size:10.5px; padding:3px 8px; border-bottom:1px solid #eef0ec; color:#2b2b2d; }
@@ -82,9 +84,9 @@ export default function ResinEstimateDocument({
         .qtotals .row { display:flex; justify-content:space-between; padding:3px 2px; font-size:11px; border-bottom:1px solid #e4e6e2; }
         .qtotals .row .lbl { color:#5e6362; }
         .qtotals .row .val { font-weight:700; color:#1a1a1a; }
-        .qtotals .grand { display:flex; justify-content:space-between; align-items:center; background:#F6C324; border-radius:4px; padding:7px 12px; margin-top:4px; }
-        .qtotals .grand .lbl { font-size:10px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:#0D0D0B; }
-        .qtotals .grand .val { font-size:18px; font-weight:900; color:#0D0D0B; }
+        .qtotals .grand { display:flex; justify-content:space-between; align-items:center; background:#F5C400; border-radius:4px; padding:7px 12px; margin-top:4px; }
+        .qtotals .grand .lbl { font-size:10px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:#0D0D0D; }
+        .qtotals .grand .val { font-size:18px; font-weight:900; color:#0D0D0D; }
 
         .qtb { display:grid; grid-template-columns:1.3fr 1fr; gap:16px; page-break-inside:avoid; break-inside:avoid; }
         .qtb-label { font-size:8px; font-weight:800; letter-spacing:0.16em; text-transform:uppercase; color:#C88F00; margin-bottom:4px; }
@@ -97,10 +99,10 @@ export default function ResinEstimateDocument({
         .qaccept .h { font-size:8px; font-weight:800; letter-spacing:0.16em; text-transform:uppercase; color:#8a6b00; margin-bottom:3px; }
         .qaccept .p { font-size:10px; line-height:1.4; margin-bottom:16px; color:#5e6362; }
         .qsign { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
-        .qsign .line { border-top:1.5px solid #0D0D0B; padding-top:4px; margin-top:28px; font-size:8px; letter-spacing:0.12em; text-transform:uppercase; color:#5e6362; }
+        .qsign .line { border-top:1.5px solid #0D0D0D; padding-top:4px; margin-top:28px; font-size:8px; letter-spacing:0.12em; text-transform:uppercase; color:#5e6362; }
 
         .qfooter { margin-top:10px; text-align:center; font-size:9px; color:#9aa09c; border-top:1px solid #e4e6e2; padding-top:6px; }
-        .qcont-row td { background:#0D0D0B; color:#9aa09c; font-size:7px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; padding:2px 8px; border:none; }
+        .qcont-row td { background:#0D0D0D; color:#9aa09c; font-size:7px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; padding:2px 8px; border:none; }
         .qcont-row td.right { text-align:right; }
       `}</style>
 
