@@ -1053,6 +1053,8 @@ const css = `
   .rl-est-meta { font-size:11px; color:var(--muted); margin-top:3px; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
   .rl-est-side { display:flex; flex-direction:column; align-items:flex-end; gap:6px; flex-shrink:0; }
   .rl-est-total { font-weight:800; font-size:14px; white-space:nowrap; color:var(--text); }
+  .rl-est-actions { display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
+  .rl-est-actions .rl-add-btn { text-decoration:none; text-align:center; }
   /* Full-screen app feel when launched from the home screen */
   @media (display-mode:standalone) {
     .rl-header { padding-top:calc(14px + env(safe-area-inset-top)); }

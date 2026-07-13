@@ -5,6 +5,7 @@ import { resolveRecipients, REVIEW_MODE, bodyToHtml, buildDefaultBody } from '@/
 import { buildPrintHtml } from '@/lib/resinEstimates/printHtml';
 import { renderEstimatePdf } from '@/lib/resinEstimates/renderPdf';
 import { sendMail } from '@/lib/mailer';
+import { r2Configured, uploadToR2 } from '@/lib/resinEstimates/r2';
 import type { ResinEstimate, ResinEstimateLine } from '@/lib/resinEstimates/types';
 
 export const runtime = 'nodejs';
@@ -70,15 +71,26 @@ export async function POST(
     return NextResponse.json({ error: msg }, { status: 502, headers: corsHeaders(origin) });
   }
 
-  // 3) Flip draft|sent → sent.
-  if (estimate.status === 'draft' || estimate.status === 'sent') {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (db.from('resin_estimates') as any)
-      .update({ status: 'sent', updated_at: new Date().toISOString() })
-      .eq('id', estimate_id);
+  // 3) Best-effort R2 archive so the estimate has a persistent online copy.
+  //    Never block the send on it — the /pdf route can always re-render.
+  let pdfUrl: string | null = null;
+  if (r2Configured()) {
+    try {
+      pdfUrl = await uploadToR2(`resin-estimates/${estimate.estimate_number}.pdf`, pdf, 'application/pdf');
+    } catch (e) {
+      console.error('[resin-leads/estimate send] R2 archive failed', e);
+    }
   }
 
-  return NextResponse.json({ ok: true, sentTo: recipients }, { headers: corsHeaders(origin) });
+  // 4) Flip draft|sent → sent; store the PDF URL when we have one.
+  if (estimate.status === 'draft' || estimate.status === 'sent') {
+    const payload: Record<string, unknown> = { status: 'sent', updated_at: new Date().toISOString() };
+    if (pdfUrl) payload.pdf_url = pdfUrl;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (db.from('resin_estimates') as any).update(payload).eq('id', estimate_id);
+  }
+
+  return NextResponse.json({ ok: true, sentTo: recipients, pdfUrl }, { headers: corsHeaders(origin) });
 }
 
 export async function OPTIONS(req: NextRequest) {
