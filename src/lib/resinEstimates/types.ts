@@ -19,6 +19,8 @@ export interface ResinEstimate {
   notes:           string | null;
   terms:           string | null;
   prepared_by:     string | null;
+  lead_id:         string | null;
+  lead_ref:        string | null;
   pdf_url:         string | null;
   created_at:      string;
   updated_at:      string;
