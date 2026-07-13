@@ -25,6 +25,12 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             Forms
           </Link>
           <Link
+            href="/admin/resin-estimates"
+            style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-secondary)', textDecoration: 'none' }}
+          >
+            Resin Estimates
+          </Link>
+          <Link
             href="/admin/logout"
             style={{
               fontFamily: 'var(--font-body)',
