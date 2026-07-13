@@ -20,15 +20,17 @@ export const RESIN_COMPANY = {
   },
 } as const;
 
-// Placeholder brand mark (gold disc + wordmark) as a data URI so it renders in
-// the puppeteer-generated PDF without needing a server origin. Swap for the
-// supplied master artwork when available.
-const LOGO_SVG =
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 470" width="460" height="470">` +
-  `<circle cx="230" cy="150" r="140" fill="#F6C324"/>` +
-  `<g fill="#111111" font-family="Arial,sans-serif" font-weight="900" text-anchor="middle" letter-spacing="1">` +
-  `<text x="230" y="378" font-size="96">OLYMPIC</text>` +
-  `<text x="230" y="458" font-size="96">RESINS</text></g></svg>`;
+// Official Olympic Resins master brand mark (registered artwork), embedded as a
+// data URI so it renders in the puppeteer-generated PDF without a server origin.
+export { RESIN_LOGO_DATA_URI as LOGO_DATA_URI } from './logo';
 
-export const LOGO_DATA_URI =
-  'data:image/svg+xml;base64,' + Buffer.from(LOGO_SVG).toString('base64');
+// Official Olympic brand palette (from the group Brand Design System).
+// "Inspiration Yellow" #F5C400 is the master brand colour.
+export const BRAND = {
+  gold:      '#F5C400',   // Inspiration Yellow — master
+  goldHover: '#FAE04D',
+  goldTint:  '#FDF0A0',
+  goldPale:  '#FEF9E0',
+  goldDeep:  '#6A5000',   // deep gold for text on light
+  ink:       '#0D0D0D',   // brand black
+} as const;
