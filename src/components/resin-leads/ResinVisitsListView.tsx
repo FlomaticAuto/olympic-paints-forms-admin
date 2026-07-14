@@ -69,6 +69,9 @@ export default function ResinVisitsListView() {
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [openHistory, setOpenHistory] = useState<Set<string>>(new Set());
+  // Which visit row is expanded to show details.
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const toggleRow = (id: string) => setExpandedId((cur) => (cur === id ? null : id));
 
   function load() {
     setLoading(true); setFailed(false);
@@ -105,6 +108,7 @@ export default function ResinVisitsListView() {
       : [];
     setDraft(d);
     setEditingId(v.id);
+    setExpandedId(v.id);   // keep the row open while editing
     setEditError(null);
   }
   function cancelEdit() {
@@ -211,26 +215,43 @@ export default function ResinVisitsListView() {
           <div className="rl-empty-body">Try clearing the search or filters.</div>
         </div>
       ) : (
-        <div className="rl-items rl-cards">
+        <div className="rl-vlist">
+          {/* Column header (desktop) */}
+          <div className="rl-vhead">
+            <span>Company</span>
+            <span>Visit Date</span>
+            <span>Rep</span>
+            <span>Outcome</span>
+            <span className="rl-vc-r">Est. Value</span>
+            <span />
+          </div>
           {filtered.map((v) => {
             const isEditing = editingId === v.id;
             const edits = v.edits ?? [];
             const historyOpen = openHistory.has(v.id);
+            const isOpen = expandedId === v.id;
             return (
-            <div key={v.id} className="rl-lead-card">
-              <div className="rl-lead-card-top">
-                <span className="rl-lead-company">{v.company}</span>
-                <span className={stagePillClass(v.outcome)}>{v.outcome ?? '—'}</span>
-              </div>
+            <div key={v.id} className={`rl-vrow-wrap${isOpen ? ' is-open' : ''}`}>
+              {/* Summary row — click to expand */}
+              <button type="button" className="rl-vrow" onClick={() => toggleRow(v.id)} aria-expanded={isOpen}>
+                <span className="rl-vc-company">{v.company}</span>
+                <span className="rl-vc" data-l="Date">{fmtDate(v.visit_date)}</span>
+                <span className="rl-vc" data-l="Rep">{v.rep ?? '—'}</span>
+                <span className="rl-vc-outcome"><span className={stagePillClass(v.outcome)}>{v.outcome ?? '—'}</span></span>
+                <span className="rl-vc-r rl-vc-total">{fmtR(v.total)}</span>
+                <span className="rl-vchevron" aria-hidden="true">{isOpen ? '▾' : '▸'}</span>
+              </button>
+
+              {/* Expanded detail */}
+              {isOpen && (
+              <div className="rl-vbody">
               <div className="rl-lead-grid">
                 <div><span className="rl-lc-l">Visit Date</span><span className="rl-lc-v">{fmtDate(v.visit_date)}</span></div>
                 {v.rep && <div><span className="rl-lc-l">Rep</span><span className="rl-lc-v">{v.rep}</span></div>}
                 <div><span className="rl-lc-l">Products</span><span className="rl-lc-v">{v.products?.length ?? 0}</span></div>
                 {v.next_follow_up && <div><span className="rl-lc-l">Next Follow-up</span><span className="rl-lc-v">{fmtDate(v.next_follow_up)}</span></div>}
-              </div>
-              <div className="rl-grand">
-                <span className="rl-grand-l">Est. Value</span>
-                <span className="rl-grand-v">{fmtR(v.total)}</span>
+                <div><span className="rl-lc-l">Ref</span><span className="rl-lc-v">{v.visit_ref}</span></div>
+                <div><span className="rl-lc-l">Est. Value</span><span className="rl-lc-v">{fmtR(v.total)}</span></div>
               </div>
               {v.notes && <p className="rl-hint">{v.notes}</p>}
 
@@ -366,6 +387,8 @@ export default function ResinVisitsListView() {
                   </div>
                 </div>
               )}
+              </div>
+              )}
             </div>
             );
           })}
@@ -408,6 +431,50 @@ function fmtDateTime(iso: string | null): string {
 
 // Edit-panel + history styles (scoped additions; base tokens come from the form's global CSS).
 const extraCss = `
+  /* ── Visits list (compact rows) ── */
+  .rl-vlist { display:flex; flex-direction:column; border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+  /* Shared column template for header + rows. */
+  .rl-vhead, .rl-vrow {
+    display:grid; grid-template-columns:1.6fr 0.9fr 0.9fr 1.1fr 0.9fr 28px;
+    gap:12px; align-items:center; padding:9px 14px; text-align:left;
+  }
+  .rl-vhead {
+    background:var(--sunken); border-bottom:1px solid var(--border);
+    font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:10px;
+    text-transform:uppercase; letter-spacing:0.09em; color:var(--muted);
+  }
+  .rl-vrow {
+    width:100%; background:transparent; border:0; cursor:pointer; font:inherit; color:var(--text);
+    border-bottom:1px solid var(--border-s); transition:background .12s;
+  }
+  .rl-vrow:hover { background:var(--section-bg); }
+  .rl-vrow-wrap:last-child .rl-vrow { border-bottom:0; }
+  .rl-vrow-wrap.is-open .rl-vrow { background:var(--section-bg); border-bottom:1px solid var(--border); }
+  .rl-vc-company { font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:15px; text-transform:uppercase; letter-spacing:0.01em; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .rl-vc { font-size:13px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .rl-vc-r { text-align:right; }
+  .rl-vc-total { font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:15px; color:var(--text); }
+  .rl-vc-outcome .rl-pill { font-size:9px; padding:3px 8px; }
+  .rl-vchevron { color:var(--gold); font-size:12px; text-align:center; }
+  .rl-vbody { padding:12px 14px 14px; background:var(--base); border-bottom:1px solid var(--border-s); display:flex; flex-direction:column; gap:11px; }
+  .rl-vrow-wrap:last-child .rl-vbody { border-bottom:0; }
+  /* Mobile: flex layout — company + value on the first line, then meta wraps below. */
+  @media (max-width:640px) {
+    .rl-vhead { display:none; }
+    .rl-vrow {
+      display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px; padding:11px 13px;
+    }
+    .rl-vc-company { flex:1 1 auto; order:1; font-size:15px; min-width:0; }
+    .rl-vc-total   { order:2; margin-left:auto; }
+    .rl-vchevron   { order:3; }
+    /* meta cells wrap onto the second line, full width */
+    .rl-vrow > .rl-vc { order:4; font-size:12px; }
+    .rl-vc[data-l='Date'] { flex-basis:100%; margin-top:1px; }
+    .rl-vc[data-l]::after { content:'·'; color:var(--dim); margin-left:6px; }
+    .rl-vc-outcome { order:5; }
+    .rl-vc-outcome .rl-pill { font-size:9px; }
+  }
+
   .rl-visit-actions { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:2px; }
   .rl-history-toggle {
     background:transparent; border:0; color:var(--gold); cursor:pointer; padding:6px 4px;
