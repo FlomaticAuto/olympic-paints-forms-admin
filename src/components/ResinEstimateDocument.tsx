@@ -1,6 +1,6 @@
 import { Fragment } from 'react';
 import type { ResinEstimate, ResinEstimateLine } from '@/lib/resinEstimates/types';
-import { RESIN_COMPANY, LOGO_DATA_URI, BRAND } from '@/lib/resinEstimates/company';
+import { RESIN_COMPANY, LOGO_DATA_URI } from '@/lib/resinEstimates/company';
 
 function fmt(n: number) {
   return `R ${Number(n).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -44,7 +44,7 @@ export default function ResinEstimateDocument({
         @page :first { margin-top: 0; }
 
         /* Header */
-        .qhead { display:grid; grid-template-columns:auto 1fr auto; align-items:center; background:#fff; border-bottom:3px solid #F5C400; margin:0 -24px 0; }
+        .qhead { display:grid; grid-template-columns:auto 1fr auto; align-items:center; background:#fff; border-bottom:3px solid #2805A0; margin:0 -24px 0; }
         @media print { .qhead { margin:0 -18px 0; } }
         .qhead-left { display:flex; align-items:center; padding:6px 10px 6px 24px; }
         .qlogo { width:150px; height:74px; object-fit:contain; object-position:left center; }
@@ -56,7 +56,7 @@ export default function ResinEstimateDocument({
 
         .qstrip { background:#0D0D0D; color:#fff; font-size:9px; letter-spacing:0.02em; display:flex; flex-wrap:wrap; gap:12px; padding:4px 24px; margin:0 -24px 8px; }
 
-        .qsec-label { font-size:8px; font-weight:800; letter-spacing:0.16em; text-transform:uppercase; color:#C88F00; margin-bottom:3px; }
+        .qsec-label { font-size:8px; font-weight:800; letter-spacing:0.16em; text-transform:uppercase; color:#2805A0; margin-bottom:3px; }
         .qproject-title { font-size:16px; font-weight:800; color:#1a1a1a; margin-bottom:3px; }
         .qproject-desc { font-size:11px; color:#5e6362; line-height:1.4; max-width:62%; }
 
@@ -68,7 +68,7 @@ export default function ResinEstimateDocument({
         table.qlines thead { display:table-header-group; }
         table.qlines thead th { font-size:8px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#fff; background:#0D0D0D; padding:4px 8px; text-align:left; }
         table.qlines thead th.r { text-align:right; }
-        .qsec-row td { background:#FDF4CF; color:#8a6b00; font-weight:800; font-size:10px; letter-spacing:0.08em; text-transform:uppercase; padding:4px 8px; border-top:2px solid #F5C400; }
+        .qsec-row td { background:#EDEAF9; color:#2805A0; font-weight:800; font-size:10px; letter-spacing:0.08em; text-transform:uppercase; padding:4px 8px; border-top:2px solid #2805A0; }
         .qsec-row td.amt { text-align:right; }
         table.qlines tbody tr { page-break-inside:avoid; break-inside:avoid; }
         table.qlines tbody td { font-size:10.5px; padding:3px 8px; border-bottom:1px solid #eef0ec; color:#2b2b2d; }
@@ -76,27 +76,27 @@ export default function ResinEstimateDocument({
         table.qlines tbody td.muted { color:#8a908e; }
 
         .qbottom { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; align-items:stretch; page-break-inside:avoid; break-inside:avoid; }
-        .qnote { background:#FDF9E7; border:1px solid #F0DFA0; border-radius:5px; padding:8px 12px; }
-        .qnote .lbl { font-size:8px; font-weight:800; letter-spacing:0.14em; text-transform:uppercase; color:#8a6b00; }
-        .qnote .amt { font-size:20px; font-weight:900; color:#8a6b00; margin:2px 0 3px; }
+        .qnote { background:#EDEAF9; border:1px solid #C9BEEE; border-radius:5px; padding:8px 12px; }
+        .qnote .lbl { font-size:8px; font-weight:800; letter-spacing:0.14em; text-transform:uppercase; color:#2805A0; }
+        .qnote .amt { font-size:20px; font-weight:900; color:#2805A0; margin:2px 0 3px; }
         .qnote .sub { font-size:10px; color:#5e6362; }
         .qtotals { align-self:start; }
         .qtotals .row { display:flex; justify-content:space-between; padding:3px 2px; font-size:11px; border-bottom:1px solid #e4e6e2; }
         .qtotals .row .lbl { color:#5e6362; }
         .qtotals .row .val { font-weight:700; color:#1a1a1a; }
-        .qtotals .grand { display:flex; justify-content:space-between; align-items:center; background:#F5C400; border-radius:4px; padding:7px 12px; margin-top:4px; }
-        .qtotals .grand .lbl { font-size:10px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:#0D0D0D; }
-        .qtotals .grand .val { font-size:18px; font-weight:900; color:#0D0D0D; }
+        .qtotals .grand { display:flex; justify-content:space-between; align-items:center; background:#2805A0; border-radius:4px; padding:7px 12px; margin-top:4px; }
+        .qtotals .grand .lbl { font-size:10px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:#fff; }
+        .qtotals .grand .val { font-size:18px; font-weight:900; color:#fff; }
 
         .qtb { display:grid; grid-template-columns:1.3fr 1fr; gap:16px; page-break-inside:avoid; break-inside:avoid; }
-        .qtb-label { font-size:8px; font-weight:800; letter-spacing:0.16em; text-transform:uppercase; color:#C88F00; margin-bottom:4px; }
+        .qtb-label { font-size:8px; font-weight:800; letter-spacing:0.16em; text-transform:uppercase; color:#2805A0; margin-bottom:4px; }
         .qterms li { font-size:10px; color:#5e6362; line-height:1.45; margin:0 0 2px 12px; }
         .qbank-row { display:flex; justify-content:space-between; border-bottom:1px dotted #d6d9d3; padding:3px 0; font-size:10px; }
         .qbank-row .k { color:#5e6362; }
         .qbank-row .v { font-weight:700; color:#1a1a1a; }
 
         .qaccept { background:#f7f6f3; border:1.5px solid #e4e6e2; border-radius:5px; padding:10px 14px 12px; color:#2b2b2d; page-break-inside:avoid; break-inside:avoid; }
-        .qaccept .h { font-size:8px; font-weight:800; letter-spacing:0.16em; text-transform:uppercase; color:#8a6b00; margin-bottom:3px; }
+        .qaccept .h { font-size:8px; font-weight:800; letter-spacing:0.16em; text-transform:uppercase; color:#2805A0; margin-bottom:3px; }
         .qaccept .p { font-size:10px; line-height:1.4; margin-bottom:16px; color:#5e6362; }
         .qsign { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
         .qsign .line { border-top:1.5px solid #0D0D0D; padding-top:4px; margin-top:28px; font-size:8px; letter-spacing:0.12em; text-transform:uppercase; color:#5e6362; }
