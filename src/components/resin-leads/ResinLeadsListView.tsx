@@ -140,7 +140,7 @@ export default function ResinLeadsListView() {
           <div className="rl-empty-body">Try clearing the search or status filter.</div>
         </div>
       ) : (
-        <div className="rl-items">
+        <div className="rl-items rl-cards">
           {filtered.map((l) => {
             const isEditing = editingId === l.id;
             const edits = l.edits ?? [];

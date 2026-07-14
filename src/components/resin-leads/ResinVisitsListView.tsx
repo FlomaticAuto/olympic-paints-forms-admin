@@ -211,7 +211,7 @@ export default function ResinVisitsListView() {
           <div className="rl-empty-body">Try clearing the search or filters.</div>
         </div>
       ) : (
-        <div className="rl-items">
+        <div className="rl-items rl-cards">
           {filtered.map((v) => {
             const isEditing = editingId === v.id;
             const edits = v.edits ?? [];
