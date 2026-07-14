@@ -146,25 +146,31 @@ export default function ResinLeadsListView() {
             const edits = l.edits ?? [];
             const historyOpen = openHistory.has(l.id);
             return (
-              <div key={l.id} className="rl-lead-card">
+              <div key={l.id} className={`rl-lead-card${isEditing ? '' : ' rl-lead-card-compact'}`}>
                 <div className="rl-lead-card-top">
                   <span className="rl-lead-company">{l.company}</span>
-                  <div style={{ display: 'flex', gap: 6 }}>
+                  <div className="rl-lead-pills">
                     <span className={stagePillClass(l.lead_status)}>{l.lead_status ?? 'New'}</span>
                     <span className={distancePillClass(l.distance)}>{l.distance}</span>
                   </div>
                 </div>
-                <div className="rl-lead-grid">
-                  {l.contact_person && <div><span className="rl-lc-l">Contact</span><span className="rl-lc-v">{l.contact_person}</span></div>}
-                  {(l.mobile || l.phone) && <div><span className="rl-lc-l">Phone</span><span className="rl-lc-v">{l.mobile || l.phone}</span></div>}
-                  {l.email && <div><span className="rl-lc-l">Email</span><span className="rl-lc-v">{l.email}</span></div>}
-                  {l.city && <div><span className="rl-lc-l">City</span><span className="rl-lc-v">{l.city}{l.province ? `, ${l.province}` : ''}</span></div>}
-                  {l.rep && <div><span className="rl-lc-l">Rep</span><span className="rl-lc-v">{l.rep}</span></div>}
-                  {l.lead_source && <div><span className="rl-lc-l">Source</span><span className="rl-lc-v">{l.lead_source}</span></div>}
-                  <div><span className="rl-lc-l">Captured</span><span className="rl-lc-v">{fmtDate(l.created_at)}</span></div>
-                  <div><span className="rl-lc-l">Ref</span><span className="rl-lc-v">{l.lead_ref}</span></div>
-                </div>
-                {l.notes && <p className="rl-hint">{l.notes}</p>}
+                {!isEditing && (
+                  <div className="rl-lead-grid">
+                    {l.contact_person && <div><span className="rl-lc-l">Contact</span><span className="rl-lc-v">{l.contact_person}</span></div>}
+                    {(l.mobile || l.phone) && <div><span className="rl-lc-l">Phone</span><span className="rl-lc-v">{l.mobile || l.phone}</span></div>}
+                    {l.email && <div className="rl-lc-wide"><span className="rl-lc-l">Email</span><span className="rl-lc-v">{l.email}</span></div>}
+                    {l.city && <div><span className="rl-lc-l">City</span><span className="rl-lc-v">{l.city}{l.province ? `, ${l.province}` : ''}</span></div>}
+                    {l.rep && <div><span className="rl-lc-l">Rep</span><span className="rl-lc-v">{l.rep}</span></div>}
+                  </div>
+                )}
+                {!isEditing && (
+                  <div className="rl-lead-foot">
+                    <span>{l.lead_ref}</span>
+                    {l.lead_source && <span>· {l.lead_source}</span>}
+                    <span>· {fmtDate(l.created_at)}</span>
+                  </div>
+                )}
+                {!isEditing && l.notes && <p className="rl-hint rl-lead-notes">{l.notes}</p>}
 
                 {/* Card actions */}
                 {!isEditing && (
@@ -312,6 +318,23 @@ function fmtDateTime(iso: string | null): string {
 
 // Edit-panel + history styles (scoped additions; base tokens come from the form's global CSS).
 const extraCss = `
+  /* Compact leads list — denser cards so more fit per screen (esp. mobile). */
+  .rl-lead-card-compact { padding:10px 12px; gap:7px; }
+  .rl-lead-card-compact .rl-lead-company { font-size:16px; }
+  .rl-lead-pills { display:flex; gap:5px; flex-shrink:0; }
+  .rl-lead-card-compact .rl-lead-grid { grid-template-columns:1fr 1fr; gap:5px 14px; }
+  .rl-lead-card-compact .rl-lc-wide { grid-column:1 / -1; }
+  .rl-lead-card-compact .rl-lc-l { font-size:8.5px; }
+  .rl-lead-card-compact .rl-lc-v { font-size:13px; line-height:1.25; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .rl-lead-foot { font-size:10.5px; color:var(--dim); display:flex; gap:4px; flex-wrap:wrap; }
+  .rl-lead-notes { margin-top:0; font-size:11.5px; }
+  .rl-lead-card-compact .rl-visit-actions { gap:10px; margin-top:1px; }
+  .rl-lead-card-compact .rl-clear-btn { padding:6px 12px; min-height:34px; font-size:11px; }
+  /* Keep the 2-col grid even on narrow screens so cards stay short. */
+  @media (max-width:640px) {
+    .rl-lead-card-compact .rl-lead-grid { grid-template-columns:1fr 1fr; }
+  }
+
   .rl-visit-actions { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:2px; }
   .rl-history-toggle {
     background:transparent; border:0; color:var(--gold); cursor:pointer; padding:6px 4px;
