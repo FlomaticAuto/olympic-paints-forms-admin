@@ -68,6 +68,34 @@ let keySeq = 0;
 const newKey = () => `l${keySeq++}`;
 const emptyLine = (): LineDraft => ({ key: newKey(), product_id: '', product_code: null, description: '', category: null, unit: 'kg', qty: '', unit_price: '', pack: '', packQty: '' });
 
+// Rebuild a form line from a saved DB row, recovering pack/packQty from the
+// stored packaging string ("3 × 190 KG Drums") when present.
+function rowToLine(r: Record<string, unknown>): LineDraft {
+  const category = (r.category ?? null) as string | null;
+  const qty = r.qty != null ? String(r.qty) : '';
+  let pack = '', packQty = '';
+  const packaging = typeof r.packaging === 'string' ? r.packaging : '';
+  const m = packaging.match(/^\s*(\d+(?:\.\d+)?)\s*[×x]\s*(.+?)\s*$/i);
+  if (m) {
+    packQty = m[1];
+    // match the pack label (e.g. "190 KG Drums" → "190 KG Drum") by size + unit
+    const match = packsFor(category).find(p => packaging.includes(`${p.size} ${p.unit === 'kg' ? 'KG' : 'L'}`));
+    if (match) pack = match.label;
+  }
+  return {
+    key: newKey(),
+    product_id: (r.product_id ?? '') as string || '',
+    product_code: (r.product_code ?? null) as string | null,
+    description: String(r.description ?? ''),
+    category,
+    unit: String(r.unit ?? 'kg'),
+    qty,
+    unit_price: r.unit_price != null ? String(r.unit_price) : '',
+    pack,
+    packQty,
+  };
+}
+
 // Pack-size rules by product category. Selecting a pack sets the per-pack measure
 // and unit; the line qty is (number of packs × pack size). Kim then enters the
 // price per kg / litre. Resins ship in 190 kg drums; solvents/thinners in 200 L
@@ -118,6 +146,10 @@ export default function ResinEstimateView({ rep }: { rep: string }) {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [recent, setRecent] = useState<EstimateRow[]>([]);
   const [sendingId, setSendingId] = useState<string | null>(null);
+  // When set, we're editing an existing draft instead of creating a new estimate.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingNumber, setEditingNumber] = useState<string | null>(null);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/resin-leads/products').then(r => r.json())
@@ -232,10 +264,17 @@ export default function ResinEstimateView({ rep }: { rep: string }) {
     setClient(''); setContactName(''); setContactEmail(''); setContactPhone('');
     setSite(''); setValidUntil(''); setNotes(''); setLines([emptyLine()]);
     setLead(null); setQuery('');
+    setEditingId(null); setEditingNumber(null);
   }
 
-  // Create the estimate, then immediately render+email its PDF to Kim.
-  async function createAndSend() {
+  function cancelEdit() {
+    resetForm();
+    setMsg(null);
+  }
+
+  // Save the estimate (create a new one, or PATCH the draft being edited),
+  // then optionally render + email its PDF to Kim (which flips it to "sent").
+  async function save(sendAfter: boolean) {
     setMsg(null);
     if (!client.trim()) { setMsg({ ok: false, text: 'Enter a client / company name.' }); return; }
     const payloadLines = lines
@@ -247,34 +286,82 @@ export default function ResinEstimateView({ rep }: { rep: string }) {
       }));
     if (payloadLines.length === 0) { setMsg({ ok: false, text: 'Add at least one product line.' }); return; }
 
+    const payload = {
+      client, contact_name: contactName, contact_email: contactEmail, contact_phone: contactPhone,
+      site, valid_until: validUntil || null, price_basis: priceBasis, notes,
+      prepared_by: rep, lines: payloadLines,
+      lead_id: lead?.id ?? null, lead_ref: lead?.lead_ref ?? null,
+    };
+
     setBusy(true);
     try {
-      const res = await fetch('/api/resin-leads/estimate', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          client, contact_name: contactName, contact_email: contactEmail, contact_phone: contactPhone,
-          site, valid_until: validUntil || null, price_basis: priceBasis, notes,
-          prepared_by: rep, lines: payloadLines,
-          lead_id: lead?.id ?? null, lead_ref: lead?.lead_ref ?? null,
-        }),
-      });
-      const est = await res.json();
-      if (!res.ok) throw new Error(est.error ?? 'Save failed');
+      // Update the draft in place, or create a new estimate.
+      const res = editingId
+        ? await fetch(`/api/resin-leads/estimate/${editingId}`, {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+          })
+        : await fetch('/api/resin-leads/estimate', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+          });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Save failed');
+      const id = editingId ?? data.id;
+      const number = editingNumber ?? data.estimate_number;
 
-      setMsg({ ok: true, text: `Saved ${est.estimate_number}. Emailing PDF to Kim…` });
-      const sendRes = await fetch(`/api/resin-leads/estimate/${est.id}/send`, {
+      if (!sendAfter) {
+        setMsg({ ok: true, text: `Draft ${number} saved. You can email it later from the list below.` });
+        resetForm();
+        loadRecent();
+        return;
+      }
+
+      setMsg({ ok: true, text: `Saved ${number}. Emailing PDF to Kim…` });
+      const sendRes = await fetch(`/api/resin-leads/estimate/${id}/send`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
       });
       const sendData = await sendRes.json();
       if (!sendRes.ok) throw new Error(sendData.error ?? 'Email failed');
 
-      setMsg({ ok: true, text: `${est.estimate_number} emailed to ${(sendData.sentTo ?? []).join(', ')}.` });
+      setMsg({ ok: true, text: `${number} emailed to ${(sendData.sentTo ?? []).join(', ')}.` });
       resetForm();
       loadRecent();
     } catch (e) {
       setMsg({ ok: false, text: e instanceof Error ? e.message : 'Something went wrong.' });
     } finally {
       setBusy(false);
+    }
+  }
+
+  // Load a draft estimate back into the form for editing.
+  async function editDraft(id: string) {
+    setLoadingId(id);
+    setMsg(null);
+    try {
+      const res = await fetch(`/api/resin-leads/estimate/${id}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Could not load estimate');
+      const est = data.estimate as Record<string, unknown>;
+      const estLines = (data.lines ?? []) as Array<Record<string, unknown>>;
+
+      setEditingId(id);
+      setEditingNumber(String(est.estimate_number ?? ''));
+      setClient(String(est.client ?? ''));
+      setContactName(String(est.contact_name ?? ''));
+      setContactEmail(String(est.contact_email ?? ''));
+      setContactPhone(String(est.contact_phone ?? ''));
+      setSite(String(est.site ?? ''));
+      setValidUntil(est.valid_until ? String(est.valid_until) : '');
+      setNotes(String(est.notes ?? ''));
+      setPriceBasis(est.price_basis === 'long' ? 'long' : 'local');
+      setLead(null); setQuery('');
+      setLines(estLines.length ? estLines.map(rowToLine) : [emptyLine()]);
+      setMsg({ ok: true, text: `Editing draft ${est.estimate_number}. Make changes, then Save Draft or Save & Email.` });
+      // scroll back up to the form
+      if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (e) {
+      setMsg({ ok: false, text: e instanceof Error ? e.message : 'Could not load estimate.' });
+    } finally {
+      setLoadingId(null);
     }
   }
 
@@ -297,6 +384,12 @@ export default function ResinEstimateView({ rep }: { rep: string }) {
 
   return (
     <div className="rl-form">
+      {editingId && (
+        <div className="rl-editing-banner">
+          <span>✎ Editing draft <b>{editingNumber}</b></span>
+          <button type="button" className="rl-clear-btn" onClick={cancelEdit} disabled={busy}>Start new instead</button>
+        </div>
+      )}
       <div className="rl-section-title">
         Customer
         <span className="rl-section-note">Search an existing lead to auto-fill, or type a new company</span>
@@ -482,9 +575,17 @@ export default function ResinEstimateView({ rep }: { rep: string }) {
           : <p className="rl-error">{msg.text}</p>
       )}
 
-      <button type="button" className="rl-submit" onClick={createAndSend} disabled={busy}>
-        {busy ? 'Working…' : 'Create & Email PDF to Kim'}
-      </button>
+      <div className="rl-est-submit-row">
+        <button type="button" className="rl-btn rl-btn-ghost" onClick={() => save(false)} disabled={busy}>
+          {busy ? 'Saving…' : editingId ? 'Save Draft' : 'Save as Draft'}
+        </button>
+        <button type="button" className="rl-submit rl-submit-inline" onClick={() => save(true)} disabled={busy}>
+          {busy ? 'Working…' : editingId ? 'Save & Email PDF to Kim' : 'Create & Email PDF to Kim'}
+        </button>
+        {editingId && (
+          <button type="button" className="rl-btn rl-btn-ghost" onClick={cancelEdit} disabled={busy}>Cancel</button>
+        )}
+      </div>
 
       {/* Recent estimates */}
       <div className="rl-section-title" style={{ marginTop: '22px' }}>Recent Estimates</div>
@@ -502,9 +603,14 @@ export default function ResinEstimateView({ rep }: { rep: string }) {
               <div className="rl-est-side">
                 <div className="rl-est-total">{fmtR(e.total ?? 0)}</div>
                 <div className="rl-est-actions">
+                  {e.status === 'draft' && (
+                    <button type="button" className="rl-add-btn" onClick={() => editDraft(e.id)} disabled={loadingId === e.id || editingId === e.id}>
+                      {loadingId === e.id ? 'Loading…' : editingId === e.id ? 'Editing…' : 'Edit'}
+                    </button>
+                  )}
                   <a className="rl-add-btn" href={pdfHref(e)} target="_blank" rel="noopener noreferrer">View PDF</a>
                   <button type="button" className="rl-add-btn rl-add-btn-alt" onClick={() => resend(e.id)} disabled={sendingId === e.id}>
-                    {sendingId === e.id ? 'Sending…' : 'Email to Kim'}
+                    {sendingId === e.id ? 'Sending…' : e.status === 'draft' ? 'Email to Kim' : 'Re-email'}
                   </button>
                 </div>
               </div>
