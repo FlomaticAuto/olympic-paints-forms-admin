@@ -177,15 +177,21 @@ export default function ResinEstimateDocument({
                     <td colSpan={4}>{catKey}</td>
                     <td className="amt">{fmt(catTotal)}</td>
                   </tr>
-                  {catLines.map(l => (
-                    <tr key={l.id}>
-                      <td>{l.description}{l.product_code ? <span className="muted"> · {l.product_code}</span> : null}</td>
-                      <td className="muted">{l.packaging ?? (l.unit ?? 'kg')}</td>
-                      <td className="r">{l.qty} {l.unit ?? 'kg'}</td>
-                      <td className="r">{fmt(l.unit_price)}<span className="muted">/{l.unit === 'litres' ? 'L' : 'kg'}</span></td>
-                      <td className="r" style={{ fontWeight: 600 }}>{fmt(l.unit_price * l.qty)}</td>
-                    </tr>
-                  ))}
+                  {catLines.map(l => {
+                    // Only weight/volume lines carry a unit suffix; charges (e.g. Drum
+                    // Deposit) show a bare qty and price.
+                    const measured = l.unit === 'kg' || l.unit === 'litres';
+                    const unitAbbr = l.unit === 'litres' ? 'L' : 'kg';
+                    return (
+                      <tr key={l.id}>
+                        <td>{l.description}{l.product_code ? <span className="muted"> · {l.product_code}</span> : null}</td>
+                        <td className="muted">{l.packaging ?? (measured ? l.unit : '')}</td>
+                        <td className="r">{l.qty}{measured ? ` ${l.unit}` : ''}</td>
+                        <td className="r">{fmt(l.unit_price)}{measured ? <span className="muted">/{unitAbbr}</span> : null}</td>
+                        <td className="r" style={{ fontWeight: 600 }}>{fmt(l.unit_price * l.qty)}</td>
+                      </tr>
+                    );
+                  })}
                 </Fragment>
               );
             })}

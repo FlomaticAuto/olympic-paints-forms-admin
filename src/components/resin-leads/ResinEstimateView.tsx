@@ -187,11 +187,12 @@ export default function ResinEstimateView({ rep }: { rep: string }) {
       product_code: p?.code ?? null,
       description: p ? p.name : l.description,
       category: p?.category ?? null,
-      // Pack products start at 1 pack; qty = 1 × size. Non-pack products keep free-text qty.
+      // Pack products start at 1 pack; qty = 1 × size. Non-pack products (e.g.
+      // charges like Drum Deposit) keep free-text qty and a neutral "ea" unit.
       pack: pack?.label ?? '',
       packQty: pack ? '1' : '',
       qty: pack ? qtyFromPacks(pack, '1') : l.qty,
-      unit: pack?.unit ?? l.unit,
+      unit: pack?.unit ?? 'ea',
       unit_price: l.unit_price || (p && priceOf(p) != null ? String(priceOf(p)) : l.unit_price),
     }));
   }
@@ -437,7 +438,7 @@ export default function ResinEstimateView({ rep }: { rep: string }) {
               })()}
               <div className="rl-item-grid">
                 <div className="rl-field">
-                  <label className="rl-label">Unit Price (R{l.unit === 'litres' ? '/L' : '/kg'})</label>
+                  <label className="rl-label">Unit Price (R{l.unit === 'litres' ? '/L' : l.unit === 'kg' ? '/kg' : ''})</label>
                   <input className="rl-input" type="text" inputMode="decimal" placeholder="Type price"
                     value={l.unit_price} onChange={e => setField(l.key, { unit_price: normalizeDecimal(e.target.value) })} />
                   {listRef != null && <p className="rl-ref">List ref: {fmtR(listRef)}</p>}
