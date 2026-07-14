@@ -47,7 +47,7 @@ export default function ResinEstimateDocument({
         .qhead { display:grid; grid-template-columns:auto 1fr auto; align-items:center; background:#fff; border-bottom:3px solid #F5C400; margin:0 -24px 0; }
         @media print { .qhead { margin:0 -18px 0; } }
         .qhead-left { display:flex; align-items:center; padding:6px 10px 6px 24px; }
-        .qlogo { width:96px; height:96px; object-fit:contain; object-position:left center; }
+        .qlogo { width:150px; height:74px; object-fit:contain; object-position:left center; }
         .qtitle-block { display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:0 10px; }
         .qtitle { font-size:26px; font-weight:900; letter-spacing:0.06em; color:#0D0D0D; line-height:1; }
         .qtagline { font-size:8px; font-weight:700; letter-spacing:0.18em; color:#6b7280; text-transform:uppercase; margin-top:3px; }
@@ -126,7 +126,7 @@ export default function ResinEstimateDocument({
 
         {/* Company strip */}
         <div className="qstrip">
-          <span>{RESIN_COMPANY.parent}</span>
+          <span>{RESIN_COMPANY.name}</span>
           <span>Reg {RESIN_COMPANY.reg}</span>
           <span>VAT {RESIN_COMPANY.vat}</span>
           <span>Tel: {RESIN_COMPANY.phone}</span>
@@ -237,7 +237,7 @@ export default function ResinEstimateDocument({
         </div>
 
         <div className="qfooter">
-          Estimate/Quote {est.estimate_number} · {est.client} · {RESIN_COMPANY.name} · {RESIN_COMPANY.parent}
+          Estimate/Quote {est.estimate_number} · {est.client} · {RESIN_COMPANY.name} · {RESIN_COMPANY.website}
         </div>
       </div>
     </>

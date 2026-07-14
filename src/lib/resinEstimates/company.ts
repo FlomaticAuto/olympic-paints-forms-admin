@@ -1,19 +1,21 @@
 // Olympic Resins company details for the estimate/quote document + email.
-// Registered details sourced from the official "Resins-banking details" letter
-// (2.Areas/1. Sales/8. Resin/Master data/Resins-banking details.pdf).
-// Trading name: Olympic Resins · Registered entity: Olymbos Resins cc.
+// Invoicing identity per the Odoo company master ("Company Details" sheet,
+// Company 2 = Olympic Resins) in 2.Areas/1. Sales/8. Resin/Master data/. This is
+// the exact name Olympic Resins invoices under. Banking from the official
+// "Resins-banking details" letter in the same folder.
 
 export const RESIN_COMPANY = {
   name:       'Olympic Resins',
-  parent:     'Prop. Olymbos Resins cc',
+  parent:     '',                    // invoices as "Olympic Resins" — no separate entity line
   tagline:    'B2B Resin & Solvent Supply',
   reg:        'CK 1994/031999/23',
   vat:        '4870145432',
   phone:      '+27 11 857 1045',
   fax:        '+27 11 857 1059',
-  email:      'resins@olympicpaints.co.za',
+  email:      'accounts@olympicpaints.co.za',
+  website:    'www.olympicpaints.co.za',
   preparedBy: 'Kim Williams',
-  address:    'Mecca Road, Anchorville Industrial Township, Lawley, Johannesburg · P.O. Box 680, Lenasia 1820',
+  address:    '28 Mecca Road, Anchorville Industrial Township, Lawley, Lenasia, Gauteng, 1830',
   bank: {
     accountName: 'Olympic Resins',
     bank:        'ABSA',
