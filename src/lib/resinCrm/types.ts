@@ -29,6 +29,22 @@ export interface ResinLead {
   rep: string | null;
   notes: string | null;
   created_at: string;
+  edits?: ResinLeadEdit[];
+}
+
+export interface ResinLeadEditChange {
+  field: string;
+  label: string;
+  from: string;
+  to: string;
+}
+
+export interface ResinLeadEdit {
+  id: string;
+  lead_id: string;
+  edited_by: string | null;
+  changes: ResinLeadEditChange[];
+  edited_at: string;
 }
 
 export interface ResinVisitProductLine {
