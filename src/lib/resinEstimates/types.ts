@@ -36,6 +36,7 @@ export interface ResinEstimateLine {
   unit:         string | null;
   qty:          number;
   unit_price:   number;
+  packaging:    string | null;
   line_total:   number;
   sort_order:   number;
   created_at:   string;
@@ -50,4 +51,5 @@ export interface RawEstimateLine {
   unit?:         string | null;
   qty:           number | string;
   unit_price:    number | string;
+  packaging?:    string | null;
 }

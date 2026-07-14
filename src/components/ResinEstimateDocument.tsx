@@ -24,7 +24,7 @@ export default function ResinEstimateDocument({
   const termLines = (est.terms?.trim()
     ? est.terms.split('\n').map(t => t.trim()).filter(Boolean)
     : [
-        'Prices are quoted per kilogram, excluding VAT unless stated, and exclude delivery unless agreed in writing.',
+        'Prices are quoted per kilogram or litre as indicated, excluding VAT unless stated, and exclude delivery unless agreed in writing.',
         'Prices are subject to change in line with raw-material and exchange-rate movements.',
         `This quote is valid for 30 days from the date of issue (${est.estimate_number}).`,
         'Orders are subject to product availability and minimum order quantities.',
@@ -160,8 +160,8 @@ export default function ResinEstimateDocument({
               <td colSpan={2} className="right">{est.client}</td>
             </tr>
             <tr>
-              <th style={{ width: '48%' }}>Product</th>
-              <th>Unit</th>
+              <th style={{ width: '30%' }}>Product</th>
+              <th style={{ width: '22%' }}>Packaging</th>
               <th className="r">Qty</th>
               <th className="r">Unit price</th>
               <th className="r">Amount</th>
@@ -180,9 +180,9 @@ export default function ResinEstimateDocument({
                   {catLines.map(l => (
                     <tr key={l.id}>
                       <td>{l.description}{l.product_code ? <span className="muted"> · {l.product_code}</span> : null}</td>
-                      <td className="muted">{l.unit ?? 'kg'}</td>
-                      <td className="r">{l.qty}</td>
-                      <td className="r">{fmt(l.unit_price)}</td>
+                      <td className="muted">{l.packaging ?? (l.unit ?? 'kg')}</td>
+                      <td className="r">{l.qty} {l.unit ?? 'kg'}</td>
+                      <td className="r">{fmt(l.unit_price)}<span className="muted">/{l.unit === 'litres' ? 'L' : 'kg'}</span></td>
                       <td className="r" style={{ fontWeight: 600 }}>{fmt(l.unit_price * l.qty)}</td>
                     </tr>
                   ))}
@@ -199,7 +199,7 @@ export default function ResinEstimateDocument({
             {est.notes?.trim()
               ? <div className="sub" style={{ marginTop: '4px' }}>{est.notes}</div>
               : <><div className="amt">{fmt(total)}</div>
-                  <div className="sub">Prices per kg · excludes delivery unless agreed</div></>}
+                  <div className="sub">Prices per kg / litre · excludes delivery unless agreed</div></>}
           </div>
           <div className="qtotals">
             <div className="row"><span className="lbl">Subtotal (excl. VAT)</span><span className="val">{fmt(subtotal)}</span></div>

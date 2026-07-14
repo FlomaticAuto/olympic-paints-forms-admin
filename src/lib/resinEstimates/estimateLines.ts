@@ -25,6 +25,7 @@ export function buildEstimateLineRows(lines: RawEstimateLine[], estimateId: stri
       unit:         str(l.unit) ?? 'kg',
       qty:          num(l.qty),
       unit_price:   num(l.unit_price),
+      packaging:    str(l.packaging),
       sort_order:   idx,
     }));
 }
