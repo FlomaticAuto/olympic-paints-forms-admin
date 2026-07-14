@@ -36,6 +36,7 @@ interface LineDraft {
   unit: string;
   qty: string;
   unit_price: string;
+  pack: string;          // selected pack-size label (e.g. "190 KG Drum")
 }
 interface EstimateRow {
   id: string;
@@ -64,7 +65,20 @@ const statusPill = (s: string) => STATUS_PILL[s] ?? 'rl-pill rl-pill-neutral';
 const normalizeDecimal = (raw: string) => raw.replace(',', '.');
 let keySeq = 0;
 const newKey = () => `l${keySeq++}`;
-const emptyLine = (): LineDraft => ({ key: newKey(), product_id: '', product_code: null, description: '', category: null, unit: 'kg', qty: '', unit_price: '' });
+const emptyLine = (): LineDraft => ({ key: newKey(), product_id: '', product_code: null, description: '', category: null, unit: 'kg', qty: '', unit_price: '', pack: '' });
+
+// Pack-size rules by product category. Selecting a pack auto-fills the qty with
+// the pack measure and sets the unit; Kim then enters the price per kg / litre.
+// Resins ship in 190 kg drums; solvents/thinners in 200 L drums or 1000 L flowbins.
+interface Pack { label: string; qty: number; unit: string }
+const PACKS_BY_CATEGORY: Record<string, Pack[]> = {
+  'Resin':           [{ label: '190 KG Drum', qty: 190, unit: 'kg' }],
+  'Solvent/Thinner': [
+    { label: '1000 L Flowbin', qty: 1000, unit: 'litres' },
+    { label: '200 L Drum',     qty: 200,  unit: 'litres' },
+  ],
+};
+const packsFor = (category: string | null): Pack[] => (category && PACKS_BY_CATEGORY[category]) || [];
 
 export default function ResinEstimateView({ rep }: { rep: string }) {
   const [catalogue, setCatalogue] = useState<Product[]>([]);
@@ -146,13 +160,27 @@ export default function ResinEstimateView({ rep }: { rep: string }) {
 
   function selectProduct(key: string, id: string) {
     const p = catalogue.find(x => x.id === id);
+    const packs = packsFor(p?.category ?? null);
+    const pack = packs[0];   // default to the first pack for the category
     setLines(prev => prev.map(l => l.key !== key ? l : {
       ...l,
       product_id: id,
       product_code: p?.code ?? null,
       description: p ? p.name : l.description,
       category: p?.category ?? null,
+      // Auto-fill pack + qty + unit from the pack rule; qty stays editable.
+      pack: pack?.label ?? '',
+      qty: pack ? String(pack.qty) : l.qty,
+      unit: pack?.unit ?? l.unit,
       unit_price: l.unit_price || (p && priceOf(p) != null ? String(priceOf(p)) : l.unit_price),
+    }));
+  }
+
+  function selectPack(key: string, label: string) {
+    setLines(prev => prev.map(l => {
+      if (l.key !== key) return l;
+      const pack = packsFor(l.category).find(pk => pk.label === label);
+      return pack ? { ...l, pack: label, qty: String(pack.qty), unit: pack.unit } : { ...l, pack: label };
     }));
   }
   const setField = (key: string, patch: Partial<LineDraft>) =>
@@ -353,6 +381,16 @@ export default function ResinEstimateView({ rep }: { rep: string }) {
                 </select>
                 <button type="button" className="rl-item-del" onClick={() => removeLine(l.key)} aria-label="Remove product" disabled={lines.length === 1}>×</button>
               </div>
+              {packsFor(l.category).length > 0 && (
+                <div className="rl-field">
+                  <label className="rl-label">Pack size</label>
+                  <select className="rl-input" value={l.pack} onChange={e => selectPack(l.key, e.target.value)}>
+                    {packsFor(l.category).map(pk => (
+                      <option key={pk.label} value={pk.label}>{pk.label}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="rl-item-grid">
                 <div className="rl-field">
                   <label className="rl-label">Unit Price (R)</label>
