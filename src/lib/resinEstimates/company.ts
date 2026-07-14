@@ -1,22 +1,24 @@
 // Olympic Resins company details for the estimate/quote document + email.
-// Banking / Reg / VAT are placeholders — update with the real registered
-// details before sending to external customers.
+// Registered details sourced from the official "Resins-banking details" letter
+// (2.Areas/1. Sales/8. Resin/Master data/Resins-banking details.pdf).
+// Trading name: Olympic Resins · Registered entity: Olymbos Resins cc.
 
 export const RESIN_COMPANY = {
   name:       'Olympic Resins',
-  parent:     'A division of Olympic Paints',
+  parent:     'Prop. Olymbos Resins cc',
   tagline:    'B2B Resin & Solvent Supply',
-  reg:        '—',            // TODO: registered company number
-  vat:        '—',            // TODO: VAT number
-  phone:      '+27 15 293 0000',
-  email:      'kimw@olympicresins.co.za',
+  reg:        'CK 1994/031999/23',
+  vat:        '4870145432',
+  phone:      '+27 11 857 1045',
+  fax:        '+27 11 857 1059',
+  email:      'resins@olympicpaints.co.za',
   preparedBy: 'Kim Williams',
-  address:    'Polokwane, Limpopo, South Africa',
+  address:    'Mecca Road, Anchorville Industrial Township, Lawley, Johannesburg · P.O. Box 680, Lenasia 1820',
   bank: {
-    accountName: 'Olympic Resins',   // TODO: confirm banking details
-    bank:        '—',
-    branchCode:  '—',
-    accountNo:   '—',
+    accountName: 'Olympic Resins',
+    bank:        'ABSA',
+    branchCode:  '630143',
+    accountNo:   '4044631796',
   },
 } as const;
 

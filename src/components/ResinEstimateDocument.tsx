@@ -126,8 +126,9 @@ export default function ResinEstimateDocument({
 
         {/* Company strip */}
         <div className="qstrip">
-          <span>{RESIN_COMPANY.name}</span>
           <span>{RESIN_COMPANY.parent}</span>
+          <span>Reg {RESIN_COMPANY.reg}</span>
+          <span>VAT {RESIN_COMPANY.vat}</span>
           <span>Tel: {RESIN_COMPANY.phone}</span>
           <span>{RESIN_COMPANY.email}</span>
         </div>
