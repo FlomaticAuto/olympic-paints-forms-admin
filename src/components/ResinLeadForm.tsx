@@ -784,7 +784,7 @@ const css = `
   }
 
   .rl-wrap { min-height:100vh; margin:0; padding:0; font-family:'Barlow',sans-serif; -webkit-tap-highlight-color:rgba(0,0,0,0); -webkit-text-size-adjust:100%; overscroll-behavior-y:contain; }
-  .rl-shell { max-width:860px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column; background:var(--base); }
+  .rl-shell { max-width:1180px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column; background:var(--base); }
 
   /* Header */
   .rl-header {
@@ -1055,6 +1055,43 @@ const css = `
   .rl-est-total { font-weight:800; font-size:14px; white-space:nowrap; color:var(--text); }
   .rl-est-actions { display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
   .rl-est-actions .rl-add-btn { text-decoration:none; text-align:center; }
+
+  /* Draft save / edit controls */
+  .rl-editing-banner {
+    display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+    background:var(--info-bg); border:1px solid var(--info-bd); color:var(--info-fg);
+    border-radius:10px; padding:9px 13px; font-size:13px; font-weight:600;
+  }
+  .rl-est-submit-row { display:flex; gap:10px; align-items:stretch; margin-top:12px; flex-wrap:wrap; }
+  .rl-submit-inline { flex:1 1 auto; margin-top:0; min-width:220px; }
+  .rl-btn-ghost {
+    background:transparent; color:var(--text); border:1px solid var(--border);
+    padding:0 18px; min-height:46px; border-radius:10px; font-weight:800; cursor:pointer;
+    font-family:'Barlow Condensed',sans-serif; text-transform:uppercase; letter-spacing:0.05em; font-size:13px;
+  }
+  .rl-btn-ghost:hover:not(:disabled) { border-color:var(--gold); color:var(--gold); }
+  .rl-btn-ghost:disabled { opacity:0.5; cursor:default; }
+
+  /* ── Desktop: full-width + denser so more fits on screen (mobile unchanged) ── */
+  @media (min-width:900px) {
+    .rl-body { padding:20px 28px calc(40px + env(safe-area-inset-bottom)); }
+    .rl-form { gap:11px; }
+    .rl-input { min-height:40px; padding:8px 12px; font-size:14px; }
+    .rl-textarea { min-height:64px; }
+    .rl-label { font-size:10.5px; }
+    .rl-field { gap:4px; }
+    .rl-section-title { margin-top:6px; padding-bottom:6px; font-size:14px; }
+    .rl-row-2 { gap:14px; }
+    /* estimate line items: 4-up on desktop so a line fits on one row */
+    .rl-item-grid { grid-template-columns:repeat(4, 1fr); gap:12px; }
+    .rl-item-value-v { padding-top:7px; }
+    /* recent estimates: two columns of cards side by side */
+    .rl-est-list { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .rl-mode-btn { padding:9px 15px; }
+  }
+  @media (min-width:1250px) {
+    .rl-est-list { grid-template-columns:1fr 1fr 1fr; }
+  }
   /* Full-screen app feel when launched from the home screen */
   @media (display-mode:standalone) {
     .rl-header { padding-top:calc(14px + env(safe-area-inset-top)); }
