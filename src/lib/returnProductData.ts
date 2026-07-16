@@ -92,6 +92,7 @@ export const CATEGORIES: CategoryEntry[] = [
       'Alkyd Roof Paint',
       'Stoep Paint',
       '3-IN-1',
+      'Road Marking Paint',
     ],
   },
   {
@@ -154,7 +155,7 @@ export const PRODUCT_DATA: Record<string, ProductInfo> = {
     sizes: PVA_SIZES,
   },
   'Decor Acrylic PVA': {
-    colours: ['White', 'Cream', 'Kiwi', 'Chestnut', 'Guava', 'Peach', 'Apricot', 'Maize', 'Mushroom', 'Cranberry', 'Night Sky', 'Silver Mist'],
+    colours: ['White', 'Cream', 'Kiwi', 'Chestnut', 'Guava', 'Peach', 'Apricot', 'Maize', 'Mushroom', 'Cranberry', 'Night Sky', 'Silver Mist', 'Dark Grey'],
     sizes: PVA_SIZES,
   },
   'Hi-Hiding Super Acrylic Contractors PVA': {
@@ -251,6 +252,10 @@ export const PRODUCT_DATA: Record<string, ProductInfo> = {
   '3-IN-1': {
     colours: ['Black', 'Burgundy', 'Grey', 'Brown', 'Terracotta', 'Red', 'Green', 'Charcoal', 'Albany'],
     sizes: ROOF_SIZES,
+  },
+  'Road Marking Paint': {
+    colours: ['Yellow'],
+    sizes: ['1L', '5L'],
   },
 
   // ── Waterproofing ──
