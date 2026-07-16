@@ -56,6 +56,7 @@ export const CATEGORIES: CategoryEntry[] = [
       'Pick \'n Save Econo Gloss Enamel',
       'Flat White Enamel',
       'Eggshell Enamel',
+      'Road Marking Paint',
     ],
   },
   {
